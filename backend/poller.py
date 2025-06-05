@@ -9,11 +9,14 @@ from dotenv import load_dotenv
 # e.g., from utils import sheets_client
 try:
     from utils.sheets_client import fetch_responses
-    from ai_model.hard_classifier import hard_classify # New import
+    from ai_model.hard_classifier import hard_classify
+    from ai_model.soft_classifier import soft_classify # New import
 except ImportError:
-    # Fallback if running poller.py directly from backend directory
+    # Fallbacks for different execution contexts
     from sheets_client import fetch_responses
-    from backend.ai_model.hard_classifier import hard_classify # Adjusted for potential execution from root
+    # Assuming if one ai_model import works, the other might too from the same relative path
+    from backend.ai_model.hard_classifier import hard_classify
+    from backend.ai_model.soft_classifier import soft_classify # New import
 
 
 # Load environment variables from .env file
@@ -74,20 +77,31 @@ def poll_google_sheet():
                     continue # Skip to next row if column doesn't exist
 
                 if not free_text_answer or not isinstance(free_text_answer, str) or not free_text_answer.strip():
-                    logging.info(f"Row {i+1} (data: {row_data}): Free-text answer in column {FREE_TEXT_COLUMN_INDEX + 1} is empty or not valid text. Skipping hard classification.")
+                    logging.info(f"Row {i+1} (data: {row_data}): Free-text answer in column {FREE_TEXT_COLUMN_INDEX + 1} is empty or not valid text. Skipping classification.")
                     continue
 
+                logging.info(f"Processing text for classification: \"{free_text_answer}\"") # Log text being processed
 
-                # Call hard_classify
-                classification_result = hard_classify(free_text_answer)
+                # Attempt hard classification
+                hard_classification_result = hard_classify(free_text_answer)
 
-                if classification_result:
-                    logging.info(f"Found hard match: '{classification_result}' for text: \"{free_text_answer}\"")
+                if hard_classification_result:
+                    logging.info(f"Found hard match: '{hard_classification_result}' for text: \"{free_text_answer}\"")
                 else:
-                    logging.info(f"No hard match found for text: \"{free_text_answer}\"; will fallback to soft classification later.")
+                    logging.info(f"No hard match found for text: \"{free_text_answer}\". Attempting soft classification.")
+                    # Attempt soft classification
+                    soft_classification_result = soft_classify(free_text_answer)
+
+                    # Log the result of soft classification
+                    # soft_classify itself logs details, but poller should also log its action.
+                    if soft_classification_result and soft_classification_result not in ["Classification Unavailable", "Classification Failed", "Undefined Category", "Classification Error"]:
+                        logging.info(f"Soft match assigned '{soft_classification_result}' for text: \"{free_text_answer}\"")
+                    else:
+                        # This log handles cases where soft_classify returned an error/default string
+                        logging.warning(f"Soft classification for \"{free_text_answer}\" resulted in: '{soft_classification_result}'. No definitive Tech Path assigned.")
 
             last_row_index_fetched = current_row_count
-            logging.info(f"Processed and logged {new_rows_count} new row(s). Last fetched index updated to {last_row_index_fetched}.")
+            logging.info(f"Processed {new_rows_count} new row(s) (hard/soft classification attempted). Last fetched index updated to {last_row_index_fetched}.")
         else:
             logging.info("No new rows found since last poll.")
 

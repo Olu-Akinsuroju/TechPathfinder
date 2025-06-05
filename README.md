@@ -30,7 +30,9 @@ Install the required Python packages:
 ```bash
 pip install -r requirements.txt
 ```
-(Note: `requirements.txt` includes `google-api-python-client`, `oauth2client`, `python-dotenv`, and `APScheduler`.)
+(Note: `requirements.txt` includes `google-api-python-client`, `oauth2client`, `python-dotenv`, `APScheduler`, `transformers`, and `torch`.)
+
+The `transformers` and `torch` libraries are included for the AI-based "soft" classification feature, which uses a local model to categorize responses when explicit keywords are not found.
 
 ### 4. Configure Environment Variables
 
@@ -164,6 +166,17 @@ HARD_RULES: Dict[str, str] = {
 ```
 
 Remember to choose Tech Paths that are consistent with your project's defined categories.
+
+### AI Soft Classification
+
+If a free-text answer from the Google Form does not match any of the predefined keywords in the "hard" classifier, the system attempts a "soft" classification using a local AI model.
+
+-   **Technology:** This feature utilizes the Hugging Face `transformers` library and a pre-trained model (`facebook/distilbart-mnli`) for zero-shot text classification.
+-   **Local Model:** The model runs entirely locally. **No external API tokens (e.g., Hugging Face API Token) are required.**
+-   **Automatic Download & Caching:**
+    -   When the application runs for the first time and the soft classifier is needed, the `transformers` library will automatically download the `facebook/distilbart-mnli` model (a few hundred MBs). This might take a few minutes depending on your internet connection.
+    -   The downloaded model is then cached locally on your machine, typically in `~/.cache/huggingface/hub/` (the exact path might vary slightly based on your operating system and Hugging Face library version). Subsequent runs will use the cached model, making startup much faster.
+-   **Functionality:** The soft classifier attempts to assign one of the ten predefined Tech Paths to the free-text answer based on semantic similarity.
 
 ## Troubleshooting
 

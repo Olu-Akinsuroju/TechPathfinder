@@ -52,6 +52,11 @@ GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/your/service_account_key.json
 # Google Sheets Range (optional, defaults to 'Sheet1!A:Z')
 # Example: 'My Form Responses!A:F'
 # SHEETS_RANGE_NAME='Sheet1!A:Z'
+
+# Column index for the free-text answer in Google Sheets (0-based).
+# For example, if the free-text answer is in Column C, use 2.
+# Default is 2 if not specified by FREE_TEXT_COLUMN_INDEX in poller.py.
+# FREE_TEXT_COLUMN_INDEX=2
 ```
 
 **Explanation of Environment Variables:**
@@ -92,6 +97,7 @@ GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/your/service_account_key.json
         5.  Click "Send" or "Share".
 -   `POLLING_INTERVAL_SECONDS` (Optional): How often the poller checks for new rows, in seconds. Defaults to 60.
 -   `SHEETS_RANGE_NAME` (Optional): The specific sheet and range to query (e.g., `'Sheet1!A:Z'` or `'Form Responses 1!A:G'`). Defaults to `'Sheet1!A:Z'`. Make sure this matches your Google Sheet's structure.
+-   `FREE_TEXT_COLUMN_INDEX` (Optional): The 0-based index of the column in your Google Sheet that contains the free-text answer you want to classify. Defaults to `2` (Column C) in `poller.py` if not set. For example, if your free-text is in Column D, set this to `3`.
 
 **Important:** Ensure the `.env` file is included in your `.gitignore` to prevent committing sensitive information.
 
@@ -104,6 +110,60 @@ python backend/poller.py
 ```
 
 The poller will start, and you should see log messages in your console indicating when it polls the sheet and if new rows are found.
+
+## Modifying Hard Classification Rules
+
+The rule-based ("hard") classifier maps specific keywords or phrases found in the form's free-text answers to predefined Tech Paths. These rules are defined in the `HARD_RULES` dictionary within the `/backend/ai_model/hard_classifier.py` file.
+
+### How to Add or Modify Keywords
+
+1.  **Open the Classifier File:**
+    Navigate to and open `/backend/ai_model/hard_classifier.py`.
+
+2.  **Locate `HARD_RULES`:**
+    You will find a Python dictionary named `HARD_RULES`. It looks like this:
+
+    ```python
+    HARD_RULES: Dict[str, str] = {
+        "game engines": "Game Development",
+        "cloud computing": "DevOps/Cloud",
+        "python ml": "Data Science/AI",
+        # ... many more rules
+    }
+    ```
+
+3.  **Edit the Rules:**
+    *   **To add a new rule:** Add a new key-value pair to the dictionary. The key is the keyword/phrase (string, will be matched case-insensitively) and the value is the Tech Path (string) it maps to.
+        ```python
+        "your new keyword phrase": "Desired Tech Path",
+        ```
+    *   **To modify an existing rule:** Change the keyword/phrase or the Tech Path for an existing entry.
+    *   **To remove a rule:** Delete the key-value pair from the dictionary.
+
+4.  **Keyword Specificity and Order:**
+    *   The matching is case-insensitive.
+    *   The classifier uses regular expressions with word boundaries (`\b`) to match whole words or phrases. For example, a rule for "ai" will match "ai" but not "train".
+    *   Rules are sorted by the length of the keyword phrase (longest first) before matching. This helps ensure that more specific, longer phrases (e.g., "python machine learning") are matched before shorter, more general ones (e.g., "python").
+
+5.  **Save and Test:**
+    *   After making changes, save the `hard_classifier.py` file.
+    *   It's highly recommended to add or update unit tests in `/backend/tests/test_hard_classifier.py` to verify your new rules work as expected and haven't introduced regressions.
+    *   Run the tests: `python -m unittest backend.tests.test_hard_classifier` (or discover tests from the root directory).
+    *   You can also run the poller and add test entries to your Google Form/Sheet to see the classification in action via the logs.
+
+**Example: Adding a rule for "quantum computing"**
+
+```python
+HARD_RULES: Dict[str, str] = {
+    "game engines": "Game Development",
+    "cloud computing": "DevOps/Cloud",
+    # ... existing rules ...
+    "quantum computing": "Future Technologies", # New rule added
+    # ... more existing rules ...
+}
+```
+
+Remember to choose Tech Paths that are consistent with your project's defined categories.
 
 ## Troubleshooting
 

@@ -1,53 +1,51 @@
 import React, { useState, useEffect } from 'react';
-
-// Placeholder for actual API call
-const fetchLatestSubmission = async (userId = 'defaultUser') => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-
-  // Placeholder data
-  const placeholderData = {
-    id: "abc123",
-    nameOrEmail: "testuser@example.com", // Added for display
-    freeText: "I love building Unity games and exploring game engines!",
-    method: "hard", // or "soft"
-    assignedLabel: "Game Development",
-    // Placeholder description - ideally this would come from a central mapping
-    pathDescription: "Dive into creating interactive experiences, from mobile games to AAA titles, using powerful tools and your imagination.",
-  };
-
-  // Simulate finding no results occasionally for testing that state
-  // if (Math.random() < 0.3) {
-  //   return null;
-  // }
-
-  return placeholderData;
-};
+import apiClient from '../api'; // Import the apiClient instance
 
 const ResultPage = () => {
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // For actual API error handling
+  const [error, setError] = useState(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const getSubmission = async () => {
       try {
         setLoading(true);
-        // Replace 'defaultUser' with actual user ID logic when available
-        const data = await fetchLatestSubmission('defaultUser');
-        setSubmission(data);
+        setNotFound(false); // Reset notFound state on new fetch attempt
+        setError(null);     // Reset error state
+
+        // Using a placeholder userId for now.
+        // When user authentication is implemented, this should be dynamic.
+        const response = await apiClient.get('/submissions/latest', {
+          // params: { userId: 'currentUserPlaceholder' } // Backend currently ignores userId
+        });
+
+        if (response.data && response.data.found === true) {
+          setSubmission(response.data);
+        } else {
+          // This case handles when backend returns { "found": false }
+          // or if data is not in the expected structure but not an HTTP error
+          setNotFound(true);
+          setSubmission(null); // Clear any old submission
+        }
+
       } catch (err) {
         console.error("Error fetching submission:", err);
-        setError("Failed to load results. Please try again later.");
+        if (err.response && err.response.status === 404) {
+          setNotFound(true);
+          setSubmission(null); // Clear any old submission
+        } else {
+          setError("Failed to load results. Please try again later.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
     getSubmission();
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
-  const surveyLink = "https://forms.gle/1LnimSMzC9ULF5kbA"; // Provided survey link
+  const surveyLink = "https://forms.gle/1LnimSMzC9ULF5kbA";
 
   if (loading) {
     return (
@@ -75,7 +73,7 @@ const ResultPage = () => {
     );
   }
 
-  if (!submission) {
+  if (notFound || !submission) { // Combined condition
     return (
       <div className="text-center py-10 bg-amber-50 p-6 rounded-lg shadow-md">
         <h2 className="text-2xl font-semibold text-amber-700 mb-4">No Results Yet</h2>
@@ -97,8 +95,40 @@ const ResultPage = () => {
   // Determine badge color based on method
   const badgeColor = submission.method === 'hard'
     ? 'bg-pink-100 text-pink-700'
-    : 'bg-indigo-100 text-indigo-700';
-  const badgeText = submission.method === 'hard' ? 'Hard Match' : 'Soft Match';
+    : submission.method === 'soft'
+      ? 'bg-indigo-100 text-indigo-700'
+      : 'bg-gray-100 text-gray-700'; // Fallback for other methods like 'soft_failed'
+
+  const badgeText = submission.method === 'hard'
+    ? 'Hard Match'
+    : submission.method === 'soft'
+      ? 'Soft Match'
+      : submission.method === 'soft_failed'
+        ? 'AI Classification Pending/Failed' // More descriptive for this case
+        : 'Unknown Method';
+
+
+  // Placeholder for path descriptions - these would ideally come from a mapping or the API
+  const pathDescriptions = {
+    "Game Development": "Dive into creating interactive experiences, from mobile games to AAA titles, using powerful tools and your imagination.",
+    "DevOps/Cloud": "Master the art of building, deploying, and managing scalable applications and infrastructure in the cloud.",
+    "Data Science/AI": "Unlock insights from data and build intelligent systems using machine learning and statistical modeling.",
+    "Embedded Systems/IoT": "Design and program the hardware and software that powers smart devices and the Internet of Things.",
+    "Blockchain": "Explore the decentralized world of blockchain technology, cryptocurrencies, and smart contracts.",
+    "AR/VR": "Create immersive augmented and virtual reality experiences that blend the digital and physical worlds.",
+    "UX/UI Design": "Craft intuitive and engaging user experiences and interfaces for websites, apps, and digital products.",
+    "Cybersecurity": "Protect systems, networks, and data from digital threats and vulnerabilities.",
+    "Web Development": "Build dynamic and interactive websites and web applications using a variety of frontend and backend technologies.",
+    "Mobile Apps": "Develop applications for iOS and Android devices, reaching users on the go.",
+    "General Programming": "Focus on foundational programming concepts, algorithms, and software development principles applicable across various domains.",
+    "Undefined Category": "Your interests are broad! Further exploration might be needed to pinpoint a specific path.",
+    "Classification Unavailable": "We couldn't determine a path at this time. Please try the survey again.",
+    "Classification Failed": "An issue occurred during classification. Please try the survey again.",
+    "Classification Error": "An error occurred while trying to classify your response. Please try the survey again.",
+    "Unknown": "The classification method or result is unknown. Please try the survey again."
+  };
+  const currentPathDescription = pathDescriptions[submission.assignedLabel] || "Explore this exciting field further to learn more!";
+
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -118,20 +148,19 @@ const ResultPage = () => {
           {submission.assignedLabel}
         </p>
 
-        {submission.pathDescription && (
-          <p className="text-slate-600 mb-6 text-lg">
-            {submission.pathDescription}
-          </p>
-        )}
+        <p className="text-slate-600 mb-6 text-lg">
+          {currentPathDescription}
+        </p>
 
         <div className="bg-slate-50 p-4 sm:p-6 rounded-xl mb-8 shadow">
           <p className="text-sm text-slate-500 mb-1">For context, you said:</p>
           <blockquote className="text-slate-700 italic text-lg">
             "{submission.freeText}"
           </blockquote>
-          {submission.nameOrEmail && (
+          {/* Assuming 'nameOrEmail' is not part of the latest_submission_data from backend for now */}
+          {/* {submission.nameOrEmail && (
              <p className="text-xs text-slate-400 mt-3 text-right">Submitted by: {submission.nameOrEmail}</p>
-          )}
+          )} */}
         </div>
 
         <div className="text-center">

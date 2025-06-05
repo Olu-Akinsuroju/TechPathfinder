@@ -196,3 +196,117 @@ If a free-text answer from the Google Form does not match any of the predefined 
     -   If you are running from the root directory (`python backend/poller.py`), the import `from utils.sheets_client import fetch_responses` should work if `backend` is a package (contains `__init__.py`). The current `poller.py` has a try-except block to handle this.
 
 ```
+
+
+## Full Stack Application Setup
+
+### Overview
+
+This project consists of a Python backend (Flask API and Google Sheets Poller) and a React frontend.
+- The **backend** polls a Google Sheet for new form responses, classifies the text in these responses using hard-rules and a local AI model, and exposes an API endpoint to get the latest classification.
+- The **frontend** provides a user interface to view the latest classified Tech Path.
+
+### Backend Setup
+
+The backend is a Python application that includes a Google Sheets poller and a Flask API server.
+
+1.  **Navigate to the Project Root:**
+    All backend commands should typically be run from the project root directory, where the main `requirements.txt` and `.env` files are located.
+
+2.  **Create a Python Virtual Environment (Recommended):**
+    It is highly recommended to use a Python virtual environment.
+    (Example commands, commented out for tool execution compatibility:
+    ```bash
+    # python -m venv venv
+    # source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+    Please run these commands manually in your local terminal if using a virtual environment.)
+
+3.  **Install Dependencies:**
+    Ensure all dependencies listed in `requirements.txt` are installed (into your virtual environment if using one):
+    ```bash
+    pip install -r requirements.txt
+    ```
+    This includes Flask, Flask-CORS, APScheduler, google-api-python-client, oauth2client, transformers, torch, python-dotenv.
+
+4.  **Configure Environment Variables:**
+    Create or update the `.env` file in the project root directory with the following (refer to earlier README sections for details on obtaining these values):
+    ```env
+    SHEETS_SPREADSHEET_ID=<your_google_sheet_id>
+    GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/your/service_account_key.json
+    # POLLING_INTERVAL_SECONDS=60 # Optional, defaults to 60
+    # SHEETS_RANGE_NAME='Sheet1!A:Z' # Optional, defaults to 'Sheet1!A:Z'
+    # FREE_TEXT_COLUMN_INDEX=2 # Optional, 0-based index for free-text column, defaults to 2 (Column C)
+    ```
+    **Important:** Ensure the `GOOGLE_SERVICE_ACCOUNT_JSON` path is correct and the Google Sheet is shared with the service account.
+
+5.  **Running the Backend (Poller + API Server):**
+    The `poller.py` script now runs both the polling job and the Flask API server.
+    ```bash
+    python backend/poller.py
+    ```
+    - The poller will start checking the Google Sheet at regular intervals.
+    - The Flask API server will start, typically on `http://localhost:5000`. You should see log output from both services in your console.
+
+6.  **Testing the Backend API Endpoint:**
+    Once the backend is running and has processed at least one submission, you can test the API endpoint.
+    (The `userEmail` parameter is illustrative and currently ignored by the backend endpoint).
+    ```bash
+    curl "http://localhost:5000/api/submissions/latest"
+    # Example with userEmail: curl "http://localhost:5000/api/submissions/latest?userEmail=test@example.com"
+    ```
+    Expected successful response (example):
+    ```json
+    {
+      "assignedLabel": "Game Development",
+      "found": true,
+      "freeText": "I love building Unity games!",
+      "id": "row_1_167...",
+      "method": "hard",
+      "timestamp": 167...
+    }
+    ```
+    Expected "not found" response (if no submissions yet):
+    ```json
+    {
+      "found": false,
+      "message": "No submissions available yet."
+    }
+    ```
+    You can also check the health endpoint:
+    ```bash
+    curl "http://localhost:5000/api/health"
+    ```
+
+### Frontend Setup
+
+The frontend is a React application built with Vite.
+
+1.  **Navigate to the Frontend Directory:**
+    ```bash
+    cd frontend
+    ```
+
+2.  **Install Dependencies:**
+    If this is the first time or `node_modules` is missing:
+    ```bash
+    npm install
+    ```
+
+3.  **Running the Frontend Development Server:**
+    ```bash
+    npm run dev
+    ```
+    This will start the Vite development server, typically on `http://localhost:5173` (the exact port will be shown in your console). Open this URL in your web browser.
+
+4.  **Frontend Environment Variables:**
+    The frontend is configured in `frontend/src/api.js` to connect to `http://localhost:5000/api` during development. No separate `.env` file is strictly required in the `/frontend` directory for this basic setup, but for production builds, you might configure `VITE_API_BASE_URL` in `/frontend/.env`.
+
+### End-to-End Workflow
+
+1.  Start the backend: `python backend/poller.py` (from project root).
+2.  Start the frontend: `cd frontend && npm run dev` (from project root, or just `npm run dev` if already in `/frontend`).
+3.  Submit a response through your Google Form.
+4.  Wait for the poller to pick up the new submission (check backend logs, typically within `POLLING_INTERVAL_SECONDS`).
+5.  Open the frontend URL (e.g., `http://localhost:5173`) in your browser and navigate to "View My Path Results" (or go directly to `/result`).
+6.  The classified result from your form submission should be displayed.

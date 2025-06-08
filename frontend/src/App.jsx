@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LandingPage from './pages/LandingPage';
+// import LandingPage from './pages/LandingPage'; // Replaced by SurveyForm at root
+import SurveyForm from './components/SurveyForm';
 import ResultPage from './pages/ResultPage';
 import Header from './components/Header'; // Optional: a shared header
 
@@ -10,8 +11,8 @@ function App() {
         <Header /> {/* Optional shared header */}
         <main className="flex-grow container mx-auto px-4 py-8">
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/result" element={<ResultPage />} />
+            <Route path="/" element={<SurveyForm />} />
+            <Route path="/result/:submissionId" element={<ResultPage />} />
             {/* Add other routes here if needed */}
           </Routes>
         </main>

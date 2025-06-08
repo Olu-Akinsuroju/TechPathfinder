@@ -23,8 +23,8 @@ load_dotenv()
 
 # --- Flask App Setup ---
 app = Flask(__name__)
-# Configure CORS - Allow requests from Vite's default dev server port
-CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
+# Configure CORS - Allow requests from Vite's default dev server port and other specified origins
+CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "https://Techpathfinder.onrender.com"])
 
 # --- In-memory store for submissions ---
 # This list will store all classified submission data.
@@ -47,16 +47,22 @@ def add_submission():
     free_text_answer = data["freeText"]
     submission_id = f"sub_{time.time()}_{len(all_submissions_data)}"
 
+    # Initialize submission_record with all fields from the payload,
+    # plus backend-generated id, timestamp, and initial status.
     submission_record = {
         "id": submission_id,
-        "freeText": free_text_answer,
+        "timestamp": time.time(),
         "status": "pending", # Initial status
-        "timestamp": time.time()
+        **data  # Unpack all fields from the validated JSON payload
     }
+    # Ensure freeText used for classification is the one from the payload,
+    # which is already handled as 'data' contains 'freeText'.
+    free_text_answer = data["freeText"] # Used for classification, already part of 'data'
 
     with submissions_lock:
         all_submissions_data.append(submission_record)
-        logging.info(f"Added new submission: {submission_id} with text: \"{free_text_answer[:50]}...\"")
+        # Log the free text from the record for consistency
+        logging.info(f"Added new submission: {submission_id} with text: \"{submission_record.get('freeText', '')[:50]}...\"")
 
     # Perform classification (can be time-consuming, consider offloading for real applications)
     classified_method = None
@@ -115,6 +121,42 @@ def get_latest_submission_route():
     response_data = submission_to_return # Already a copy
     response_data["found"] = True
     return jsonify(response_data), 200
+
+@app.route('/api/submissions/<submission_id>', methods=['GET'])
+def get_submission_by_id(submission_id):
+    found_submission_data = None
+    with submissions_lock:
+        for record in all_submissions_data:
+            if record['id'] == submission_id:
+                # Create a copy to avoid modifying the original record if further processing is done
+                found_submission_data = record.copy()
+                break
+
+    if found_submission_data:
+        # Map keys as per requirements for the response
+        # Map keys as per requirements for the response
+        # Now that add_submission stores the full payload, we can map these fields.
+        response_dict = {
+            "id": found_submission_data.get("id"),
+            "whyCS": found_submission_data.get("whyComputerScience"),
+            "motivation": found_submission_data.get("motivation"),
+            "excitement": found_submission_data.get("excitedActivity"),
+            "tools": found_submission_data.get("preferredTools"), # Stored as an array from frontend
+            "projectDescription": found_submission_data.get("projectDescription"),
+            "assignedLabel": found_submission_data.get("assignedLabel"),
+            "hardOrSoft": found_submission_data.get("method"), # Map 'method' to 'hardOrSoft'
+            "timestamp": found_submission_data.get("timestamp"),
+            "name": found_submission_data.get("name"), # Include other useful fields
+            "workEnvironment": found_submission_data.get("workEnvironment"),
+            "freeText": found_submission_data.get("freeText"), # This is often same as projectDescription
+            "status": found_submission_data.get("status")
+        }
+        # Filter out keys where the value is None, to keep the response clean if some optional fields were not provided.
+        cleaned_response_dict = {k: v for k, v in response_dict.items() if v is not None}
+
+        return jsonify(cleaned_response_dict), 200
+    else:
+        return jsonify({"error": "Submission not found"}), 404
 
 @app.route("/api/health", methods=["GET"])
 def health_check():

@@ -105,8 +105,13 @@ The frontend is a React application built with Vite.
     ```
     This will start the Vite development server, typically on `http://localhost:5173` (the exact port will be shown in your console). Open this URL in your web browser.
 
-4.  **Frontend Environment Variables:**
-    The frontend is configured in `frontend/src/api.js` to connect to `http://localhost:5000/api` during development. For production builds, if the backend API is on a different domain, you might configure `VITE_API_BASE_URL` in `/frontend/.env`. For same-origin deployments or proxied setups, this might not be necessary.
+#### Environment Variables (Frontend)
+
+While not strictly required for local development if your backend runs on `http://localhost:5000`, the frontend can be configured using a `.env` file in the `frontend` directory.
+
+*   `VITE_API_BASE_URL` (Optional): Set this variable if you need to specify an absolute base URL for the backend API. This is particularly useful if your frontend and backend are served from different domains in a production-like environment.
+    *   Example: `VITE_API_BASE_URL=https://your-backend-service.onrender.com/api`
+    *   If not set, the frontend defaults to `http://localhost:5000/api` during development (`yarn dev`) and `/api` (a relative path) for production builds.
 
 ### End-to-End Workflow
 

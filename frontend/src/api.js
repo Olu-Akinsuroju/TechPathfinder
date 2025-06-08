@@ -3,9 +3,7 @@ import axios from 'axios';
 // Define the base URL for the backend API
 // When the backend is live, this should be its actual URL.
 // For local development with a backend server running on port 5000:
-const API_BASE_URL = process.env.NODE_ENV === 'development'
-  ? 'http://localhost:5000/api'
-  : '/api'; // For production, assuming frontend is served with backend or proxied
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

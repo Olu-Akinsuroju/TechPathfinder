@@ -12,14 +12,12 @@ from typing import List, Dict, Any
 try:
     from transformers import pipeline
     # Using a specific model revision can help ensure consistency if needed
-    # model_name = "facebook/distilbart-mnli"
     # model_revision = "c2d319c" # Example revision, check Hugging Face for latest stable
-    logging.info(f"Attempting to load Hugging Face pipeline: model='facebook/distilbart-mnli'...")
     classifier = pipeline(
         "zero-shot-classification",
-        model="facebook/distilbart-mnli" # Using main branch by default
+        model="MoritzLaurer/deberta-v3-base-zeroshot-v2.0" # Using main branch by default
     )
-    logging.info("Hugging Face zero-shot classification pipeline loaded successfully with model facebook/distilbart-mnli.")
+    logging.info("Hugging Face zero-shot classification pipeline loaded successfully with model MoritzLaurer/deberta-v3-base-zeroshot-v2.0.")
 except ImportError:
     logging.error("Transformers library not found. Please install it via pip install transformers torch.")
     classifier = None # Or raise an exception

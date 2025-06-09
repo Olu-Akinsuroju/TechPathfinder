@@ -1,197 +1,149 @@
 import os
 import logging
-import os
-import logging
 import time
 import threading # For running Flask in a separate thread
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from apscheduler.schedulers.background import BackgroundScheduler # Changed from BlockingScheduler
 from dotenv import load_dotenv
 
-# Try importing classifiers from ai_model package first, then from backend.ai_model
 try:
-    logging.info("Attempting to import classifiers from ai_model package...")
+    from utils.sheets_client import fetch_responses
     from ai_model.hard_classifier import hard_classify
     from ai_model.soft_classifier import soft_classify
-    logging.info("Successfully imported classifiers from ai_model.")
-except ImportError as e:
-    logging.warning(f"Could not import from ai_model ({e}), trying backend.ai_model...")
+except ImportError:
+    from sheets_client import fetch_responses
     from backend.ai_model.hard_classifier import hard_classify
     from backend.ai_model.soft_classifier import soft_classify
-    logging.info("Successfully imported classifiers from backend.ai_model.")
-except Exception as e:
-    logging.error(f"An unexpected error occurred during classifier import: {e}", exc_info=True)
-    # Depending on severity, might re-raise or exit
-    raise
 
 # Load environment variables from .env file
 load_dotenv()
 
 # --- Flask App Setup ---
 app = Flask(__name__)
-# Comment out the old global CORS configuration
-# CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "https://Techpathfinder.onrender.com"])
-
-# Configure resource-specific CORS for /api/* routes
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            "https://tech-path-frontend.onrender.com", # Production frontend URL from user issue
-            "http://localhost:3000",                   # Common React dev port
-            "http://localhost:5173"                    # Vite default dev port
-        ],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True
-    }
-})
+# Configure CORS - Allow requests from Vite's default dev server port
+CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
 
 # --- In-memory store for submissions ---
-# This list will store all classified submission data.
-# Each item is a dict: e.g., {"id": "...", "freeText": "...", "status": "pending/processed", "method": "...", "assignedLabel": "...", "timestamp": ...}
-all_submissions_data = []
-submissions_lock = threading.Lock() # To handle concurrent access
+# This list will store classified submission data.
+# Each item could be a dict: e.g., {"id": "...", "freeText": "...", "method": "...", "assignedLabel": "..."}
+# For simplicity, we'll store the LATEST submission only. A proper DB would be better.
+latest_submission_data = None
+latest_submission_lock = threading.Lock() # To handle concurrent access if any
 
 # --- Logging Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Flask API Endpoints ---
-@app.route("/api/submissions", methods=["POST", "OPTIONS"]) # Added "OPTIONS"
-def add_submission():
-    if request.method == 'OPTIONS':
-        # Preflight request. Flask-CORS should handle Access-Control-Allow-* headers.
-        # For non-simple requests (e.g. with Content-Type: application/json),
-        # the browser sends an OPTIONS request first to check if the actual request is allowed.
-        # Returning a simple 200 OK here is sufficient.
-        response = jsonify({})
-        # Flask-CORS with resource-specific setup should automatically add:
-        # Access-Control-Allow-Origin, Access-Control-Allow-Methods, Access-Control-Allow-Headers
-        return response, 200
+# --- Environment Variables for Poller ---
+SPREADSHEET_ID = os.getenv('SHEETS_SPREADSHEET_ID')
+RANGE_NAME = os.getenv('SHEETS_RANGE_NAME', 'Sheet1!A:Z')
+POLLING_INTERVAL_SECONDS = int(os.getenv('POLLING_INTERVAL_SECONDS', 60))
+FREE_TEXT_COLUMN_INDEX = int(os.getenv('FREE_TEXT_COLUMN_INDEX', 2))
 
-    # Existing POST logic
-    if request.method == 'POST':
-        global all_submissions_data
-        data = request.get_json()
+last_row_index_fetched = 0
 
-        if not data or "freeText" not in data or not isinstance(data["freeText"], str) or not data["freeText"].strip():
-            return jsonify({"error": "Invalid submission data. 'freeText' field is required and must be a non-empty string."}), 400
+def poll_google_sheet():
+    global last_row_index_fetched
+    global latest_submission_data
 
-        free_text_answer = data["freeText"]
-        submission_id = f"sub_{time.time()}_{len(all_submissions_data)}"
+    if not SPREADSHEET_ID:
+        logging.error("SHEETS_SPREADSHEET_ID environment variable is not set.")
+        return
+    if not os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON'):
+        logging.error("GOOGLE_SERVICE_ACCOUNT_JSON environment variable is not set.")
+        return
 
-    # Initialize submission_record with all fields from the payload,
-    # plus backend-generated id, timestamp, and initial status.
-    submission_record = {
-        "id": submission_id,
-        "timestamp": time.time(),
-        "status": "pending", # Initial status
-        **data  # Unpack all fields from the validated JSON payload
-    }
-    # Ensure freeText used for classification is the one from the payload,
-    # which is already handled as 'data' contains 'freeText'.
-    free_text_answer = data["freeText"] # Used for classification, already part of 'data'
+    logging.info(f"Polling Google Sheet ID: {SPREADSHEET_ID}, Range: {RANGE_NAME}")
 
-    with submissions_lock:
-        all_submissions_data.append(submission_record)
-        # Log the free text from the record for consistency
-        logging.info(f"Added new submission: {submission_id} with text: \"{submission_record.get('freeText', '')[:50]}...\"")
+    try:
+        rows = fetch_responses(SPREADSHEET_ID, RANGE_NAME)
+        if not rows:
+            logging.info("No data found in the sheet.")
+            return
 
-    # Perform classification (can be time-consuming, consider offloading for real applications)
-    classified_method = None
-    classified_label = None
+        current_row_count = len(rows)
+        logging.info(f"Fetched {current_row_count} rows. Last fetched index was {last_row_index_fetched}.")
 
-    logging.info(f"Classifying text for {submission_id}: \"{free_text_answer}\"")
-    hard_classification_result = hard_classify(free_text_answer)
-    if hard_classification_result:
-        logging.info(f"Found hard match for {submission_id}: '{hard_classification_result}'")
-        classified_method = "hard"
-        classified_label = hard_classification_result
-    else:
-        logging.info(f"No hard match for {submission_id}. Attempting soft classification.")
-        soft_classification_result = soft_classify(free_text_answer)
-        if soft_classification_result and soft_classification_result not in ["Classification Unavailable", "Classification Failed", "Undefined Category", "Classification Error"]:
-            logging.info(f"Soft match for {submission_id} assigned '{soft_classification_result}'")
-            classified_method = "soft"
-            classified_label = soft_classification_result
+        if current_row_count > last_row_index_fetched:
+            new_rows_processed_this_cycle = 0
+            # Process rows from oldest new to newest new
+            for i in range(last_row_index_fetched, current_row_count):
+                row_data = rows[i]
+                logging.info(f"Processing new row data: {row_data}")
+                new_rows_processed_this_cycle += 1
+
+                submission_id = f"row_{i+1}_{time.time()}" # Simple unique ID
+
+                free_text_answer = None
+                if len(row_data) > FREE_TEXT_COLUMN_INDEX:
+                    free_text_answer = row_data[FREE_TEXT_COLUMN_INDEX]
+                else:
+                    logging.warning(f"Row {i+1} (data: {row_data}) has fewer than {FREE_TEXT_COLUMN_INDEX + 1} columns. Cannot extract free-text.")
+                    continue
+
+                if not free_text_answer or not isinstance(free_text_answer, str) or not free_text_answer.strip():
+                    logging.info(f"Row {i+1} (data: {row_data}): Free-text answer is empty. Skipping classification.")
+                    continue
+
+                logging.info(f"Classifying text: \"{free_text_answer}\"")
+
+                classified_method = None
+                classified_label = None
+
+                hard_classification_result = hard_classify(free_text_answer)
+                if hard_classification_result:
+                    logging.info(f"Found hard match: '{hard_classification_result}' for text: \"{free_text_answer}\"")
+                    classified_method = "hard"
+                    classified_label = hard_classification_result
+                else:
+                    logging.info(f"No hard match for \"{free_text_answer}\". Attempting soft classification.")
+                    soft_classification_result = soft_classify(free_text_answer)
+                    if soft_classification_result and soft_classification_result not in ["Classification Unavailable", "Classification Failed", "Undefined Category", "Classification Error"]:
+                        logging.info(f"Soft match assigned '{soft_classification_result}' for text: \"{free_text_answer}\"")
+                        classified_method = "soft"
+                        classified_label = soft_classification_result
+                    else:
+                        logging.warning(f"Soft classification for \"{free_text_answer}\" resulted in: '{soft_classification_result}'. No definitive Tech Path assigned.")
+                        # Decide if you want to store this or not
+                        classified_method = "soft_failed"
+                        classified_label = "Unknown"
+
+
+                # Update the global latest_submission_data
+                # This will effectively store the *very latest* processed row from this batch
+                if classified_label and classified_method:
+                    with latest_submission_lock:
+                        latest_submission_data = {
+                            "id": submission_id,
+                            "freeText": free_text_answer,
+                            "method": classified_method,
+                            "assignedLabel": classified_label,
+                            "timestamp": time.time() # Add timestamp for freshness
+                        }
+                        logging.info(f"Updated latest_submission_data with: {latest_submission_data['id']}")
+
+            last_row_index_fetched = current_row_count
+            logging.info(f"Processed {new_rows_processed_this_cycle} new row(s). Last fetched index updated to {last_row_index_fetched}.")
         else:
-            logging.warning(f"Soft classification for {submission_id} (text: \"{free_text_answer[:50]}...\") resulted in: '{soft_classification_result}'. No definitive Tech Path assigned.")
-            classified_method = "soft_failed"
-            classified_label = "Unknown" # Or use soft_classification_result if more detail is needed
+            logging.info("No new rows found since last poll.")
 
-    # Update the record in all_submissions_data with classification results
-    updated_successfully = False
-    with submissions_lock:
-        for record in all_submissions_data:
-            if record["id"] == submission_id:
-                record["status"] = "processed"
-                record["method"] = classified_method
-                record["assignedLabel"] = classified_label
-                record["classificationTimestamp"] = time.time() # Add timestamp for classification
-                updated_successfully = True
-                logging.info(f"Successfully updated submission {submission_id} with classification results.")
-                break
+    except FileNotFoundError as fnf_error:
+        logging.error(f"Service account JSON file not found. Error: {fnf_error}")
+    except Exception as e:
+        logging.error(f"An error occurred while polling Google Sheet: {e}", exc_info=True)
 
-    if not updated_successfully:
-        # This should ideally not happen if the submission was just added.
-        logging.error(f"Failed to find and update submission {submission_id} after classification. This is unexpected.")
-        # Decide on how to handle this - maybe return a 500 error. For now, log and proceed.
-
-        return jsonify({"status": "ok", "submissionId": submission_id, "label": classified_label, "method": classified_method}), 201 # 201 Created
-
-    # Fallback for any other method not explicitly handled (though route decorator limits this)
-    return jsonify({"error": "Method not allowed"}), 405
-
+# --- Flask API Endpoints ---
 @app.route("/api/submissions/latest", methods=["GET"])
 def get_latest_submission_route():
-    with submissions_lock:
-        if not all_submissions_data:
-            submission_to_return = None
-        else:
-            # Return a copy of the last submission
-            submission_to_return = all_submissions_data[-1].copy()
+    # user_email = request.args.get("userEmail") # User email not used for now
+    with latest_submission_lock:
+        submission_to_return = latest_submission_data
 
     if not submission_to_return:
-        return jsonify({"found": False, "message": "No submissions available yet."}), 404
+        return jsonify({ "found": False, "message": "No submissions available yet." }), 404
 
-    response_data = submission_to_return # Already a copy
-    response_data["found"] = True
-    return jsonify(response_data), 200
-
-@app.route('/api/submissions/<submission_id>', methods=['GET'])
-def get_submission_by_id(submission_id):
-    found_submission_data = None
-    with submissions_lock:
-        for record in all_submissions_data:
-            if record['id'] == submission_id:
-                # Create a copy to avoid modifying the original record if further processing is done
-                found_submission_data = record.copy()
-                break
-
-    if found_submission_data:
-        # Map keys as per requirements for the response
-        # Map keys as per requirements for the response
-        # Now that add_submission stores the full payload, we can map these fields.
-        response_dict = {
-            "id": found_submission_data.get("id"),
-            "whyCS": found_submission_data.get("whyComputerScience"),
-            "motivation": found_submission_data.get("motivation"),
-            "excitement": found_submission_data.get("excitedActivity"),
-            "tools": found_submission_data.get("preferredTools"), # Stored as an array from frontend
-            "projectDescription": found_submission_data.get("projectDescription"),
-            "assignedLabel": found_submission_data.get("assignedLabel"),
-            "hardOrSoft": found_submission_data.get("method"), # Map 'method' to 'hardOrSoft'
-            "timestamp": found_submission_data.get("timestamp"),
-            "name": found_submission_data.get("name"), # Include other useful fields
-            "workEnvironment": found_submission_data.get("workEnvironment"),
-            "freeText": found_submission_data.get("freeText"), # This is often same as projectDescription
-            "status": found_submission_data.get("status")
-        }
-        # Filter out keys where the value is None, to keep the response clean if some optional fields were not provided.
-        cleaned_response_dict = {k: v for k, v in response_dict.items() if v is not None}
-
-        return jsonify(cleaned_response_dict), 200
-    else:
-        return jsonify({"error": "Submission not found"}), 404
+    # Return a copy to avoid potential modification issues if the object is complex
+    return jsonify(dict(submission_to_return, found=True)), 200
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
@@ -199,20 +151,29 @@ def health_check():
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    logging.info("Backend application starting up in __main__ block...")
-    # BasicConfig is set globally above. If modules also call it, it might have no effect or conflict.
-    # Ensure basicConfig is called only once, ideally at the very start of the application.
-    # Here, it's assumed the global one at the top of the file (after imports) is sufficient.
+    logging.info("Starting Google Sheet poller with integrated Flask API...")
+    logging.info(f"Polling interval: {POLLING_INTERVAL_SECONDS} seconds")
+    logging.info(f"Free-text answer column index: {FREE_TEXT_COLUMN_INDEX} (0-based)")
 
-    logging.info("Starting Flask API server...") # This existing log is good.
+    # Use BackgroundScheduler for the poller job so Flask can run in the main thread
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(poll_google_sheet, 'interval', seconds=POLLING_INTERVAL_SECONDS)
+    scheduler.start()
 
-    # Check for environment variables for classifiers if they have specific needs
-    # (e.g., API keys for soft_classifier if it were calling an external service)
-    # For now, assuming classifiers are self-contained or use .env for their own config.
+    # Perform an initial poll immediately if desired (optional)
+    # logging.info("Performing initial poll...")
+    # poll_google_sheet()
 
-    logging.info("Attempting to start Flask development server (app.run)...")
-    # Flask's default port is 5000.
-    # debug=False is suitable for a production/staging environment.
-    # threaded=True can be useful if background tasks within Flask requests are needed,
-    # but our classification currently blocks within the request.
+    logging.info("Starting Flask app on port 5000...")
+    # Flask's default port is 5000. Ensure it doesn't conflict.
+    # Use threaded=True if needed, though BackgroundScheduler handles the poller separately.
     app.run(host='0.0.0.0', port=5000, debug=False)
+
+    # Cleanly shut down scheduler when app exits
+    # This might not be reached if app.run() blocks indefinitely until Ctrl+C
+    # Consider using atexit or signal handling for robust shutdown if needed.
+    # try:
+    #     while True:
+    #         time.sleep(2)
+    # except (KeyboardInterrupt, SystemExit):
+    #     scheduler.shutdown()

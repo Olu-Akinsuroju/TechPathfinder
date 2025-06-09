@@ -1,6 +1,7 @@
-Flask
+APScheduler
 Flask-CORS
+google-api-python-client
+oauth2client
 python-dotenv
 torch
 transformers
-gunicorn

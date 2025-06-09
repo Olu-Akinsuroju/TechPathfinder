@@ -1,8 +1,7 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-// import 'bootstrap-icons/font/bootstrap-icons.css'; // Removed as bootstrap-icons package not explicitly installed in this phase
-import App from './App.jsx';
-import './index.css'; // Contains global styles, potentially overriding some Bootstrap defaults if needed
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import './index.css' // Ensure Tailwind CSS is imported
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

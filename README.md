@@ -1,189 +1,121 @@
-# Tech Pathfinder
+# Project Title (Replace with your actual project title)
 
-This project helps users discover suitable tech career paths based on their interests and motivations, as expressed through a survey. It uses a combination of rule-based classification and AI-driven soft classification to suggest a relevant "Tech Path".
+This project includes a polling mechanism to fetch new rows from a Google Sheet linked to a Google Form.
 
 ## Features
 
--   Interactive survey form for users to input their preferences.
--   Backend API to receive survey submissions.
--   Rule-based ("hard") classification for direct matches.
--   AI-powered ("soft") classification using a local transformer model for nuanced inputs.
--   Displays the classified Tech Path and related information to the user.
--   In-memory data storage for submissions (no external database required for core functionality).
+-   Fetches new rows from a specified Google Sheet every minute (configurable).
+-   Uses a Google Cloud Service Account for authentication.
+-   Logs new form responses.
 
-## Legacy Features Note
-Note: This application previously used Google Forms for data input, Google Sheets for data storage, and Google Apps Script for automation. This integration has been removed. The current version uses an in-site survey form and a direct backend API for processing submissions.
+## Setup Instructions
 
-## Full Stack Application Setup
-
-### Overview
-
-This project consists of a Python backend (Flask API) and a React frontend.
-- The **backend** receives survey submissions, classifies the text in these responses using hard-rules and a local AI model, and exposes API endpoints for submissions and results.
-- The **frontend** provides a user interface for the survey and to view the classified Tech Path.
-
-### Prerequisites
+### 1. Prerequisites
 
 -   Python 3.x
--   Node.js and Yarn (or npm)
+-   Access to a Google Sheet (usually created from a Google Form).
+-   A Google Cloud Platform (GCP) project.
 
-### Backend Setup
+### 2. Clone the Repository
 
-The backend is a Python application that includes a Flask API server.
-
-1.  **Navigate to the Backend Directory:**
-    ```bash
-    cd backend
-    ```
-
-2.  **Create a Python Virtual Environment (Recommended):**
-    It is highly recommended to use a Python virtual environment.
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
-    (Please run these commands manually in your local terminal if using a virtual environment.)
-
-3.  **Install Dependencies:**
-    Ensure all dependencies listed in `requirements.txt` are installed (into your virtual environment if using one):
-    ```bash
-    pip install -r requirements.txt
-    ```
-    This includes Flask, Flask-CORS, transformers, torch, python-dotenv.
-
-4.  **Environment Variables:**
-    No critical environment variables are strictly required for the current core functionality to work (submission classification and display). The application uses an in-memory data store. Standard environment variables for Flask/Python development (e.g., `FLASK_ENV`, `PYTHONUNBUFFERED`) or for specific deployment platforms can be used as needed. The backend loads variables from a `.env` file if present in the `backend` directory (e.g., for classifier model configurations if externalized, though not currently the case).
-
-5.  **Running the Backend:**
-    *   **For local development:**
-        From the `backend` directory:
-        ```bash
-        python poller.py
-        ```
-        The Flask API server will start, typically on `http://localhost:5000`.
-    *   **For production (example with Gunicorn):**
-        From the `backend` directory, ensure Gunicorn is installed (`pip install gunicorn`).
-        ```bash
-        gunicorn poller:app --bind 0.0.0.0:$PORT
-        ```
-        Replace `$PORT` with the desired port number (e.g., 8000). Render typically sets this automatically.
-
-6.  **Testing the Backend API Endpoints:**
-    Once the backend is running, you can test the API endpoints.
-    *   Health check:
-        ```bash
-        curl "http://localhost:5000/api/health"
-        ```
-    *   Submit data (example using a simplified payload):
-        ```bash
-        curl -X POST -H "Content-Type: application/json" -d '{"freeText": "I want to build games."}' "http://localhost:5000/api/submissions"
-        ```
-    *   Retrieve a submission (replace `:submissionId` with an actual ID from a POST response):
-        ```bash
-        curl "http://localhost:5000/api/submissions/:submissionId"
-        ```
-
-### Frontend Setup
-
-The frontend is a React application built with Vite.
-
-1.  **Navigate to the Frontend Directory:**
-    From the project root:
-    ```bash
-    cd frontend
-    ```
-
-### Manual `package.json` Adjustments for Plain Bootstrap CSS Migration
-
-This project has been refactored to use standard HTML elements styled directly with Bootstrap 5 CSS classes, and Bootstrap's CSS is loaded via a CDN link in `index.html`. This means `react-bootstrap` and the local `bootstrap` (for CSS) package are no longer required.
-
-Due to this change, and potential environment incompatibilities with automated package management in some execution contexts (as noted with `yarn add`/`remove` commands during development), you will need to manually update your `frontend/package.json` file.
-
-1.  **Ensure your Node.js version is >= 20.0.0** to be compatible with `react-router-dom@7.6.2` (a common dependency). If you cannot upgrade Node.js, you might need to adjust the version of `react-router-dom` or other packages.
-2.  **Modify `frontend/package.json` as follows:**
-
-    *   **Remove from `dependencies`** (if present):
-        *   `react-bootstrap` (no longer used)
-        *   `bootstrap` (CSS is now via CDN, JS components are not used directly from this package)
-        *   `bootstrap-icons` (its CSS import was removed from `main.jsx`. If you re-add it or use these icons via other means, you can keep this dependency; otherwise, remove it).
-
-    *   **Ensure `devDependencies` are clean of Tailwind CSS:**
-        Remove from `devDependencies` (if present):
-        *   `tailwindcss`
-        *   `autoprefixer`
-        *   `postcss`
-        *   `@tailwindcss/postcss`
-
-3.  **After saving `package.json`**, navigate to the `frontend` directory in your terminal and run `yarn install` (or `npm install` if you use npm) to apply these changes and update your `node_modules` directory and lock file.
-
-**Target `frontend/package.json` structure (relevant parts after cleanup):**
-```json
-{
-  "name": "frontend",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "axios": "^1.9.0",
-    // "bootstrap": "^5.3.x", // REMOVED (CSS via CDN)
-    // "bootstrap-icons": "^1.11.x", // REMOVED (or optional if you re-integrate its CSS/SVG explicitly)
-    "react": "^19.1.0",
-    // "react-bootstrap": "^2.10.x", // REMOVED
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.2"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.25.0",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2",
-    "@vitejs/plugin-react": "^4.4.1",
-    "eslint": "^9.25.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.19",
-    "globals": "^16.0.0",
-    "vite": "^6.3.5"
-    // Ensure tailwindcss, autoprefixer, postcss, @tailwindcss/postcss are REMOVED
-  }
-}
+```bash
+git clone <your-repository-url>
+cd <your-repository-directory>
 ```
 
-2.  **Install Dependencies:**
-    After manually updating `package.json`:
-    ```bash
-    yarn install
-    ```
+### 3. Install Dependencies
 
-3.  **Running the Frontend Development Server:**
-    ```bash
-    yarn dev
-    ```
-    This will start the Vite development server, typically on `http://localhost:5173` (the exact port will be shown in your console). Open this URL in your web browser.
+Install the required Python packages:
 
-#### Environment Variables (Frontend)
+```bash
+pip install -r requirements.txt
+```
+(Note: `requirements.txt` includes `google-api-python-client`, `oauth2client`, `python-dotenv`, `APScheduler`, `transformers`, and `torch`.)
 
-While not strictly required for local development if your backend runs on `http://localhost:5000`, the frontend can be configured using a `.env` file in the `frontend` directory.
+The `transformers` and `torch` libraries are included for the AI-based "soft" classification feature, which uses a local model to categorize responses when explicit keywords are not found.
 
-*   `VITE_API_BASE_URL` (Optional): Set this variable if you need to specify an absolute base URL for the backend API. This is particularly useful if your frontend and backend are served from different domains in a production-like environment.
-    *   Example: `VITE_API_BASE_URL=https://your-backend-service.onrender.com/api`
-    *   If not set, the frontend defaults to `http://localhost:5000/api` during development (`yarn dev`) and `/api` (a relative path) for production builds.
+### 4. Configure Environment Variables
 
-### End-to-End Workflow
+Create a `.env` file in the root directory of the project. You can copy the example:
 
-1.  Start the backend: `cd backend && python poller.py` (adjust for virtual environment).
-2.  Start the frontend: `cd frontend && yarn dev`.
-3.  Open the frontend URL (e.g., `http://localhost:5173`) in your browser.
-4.  Fill out and submit the survey.
-5.  You should be redirected to a results page displaying your classified Tech Path.
+```bash
+cp .env.example .env
+```
+If `.env.example` is not provided, create `.env` manually and add the following:
+
+```env
+# Google Sheets Configuration
+SHEETS_SPREADSHEET_ID=<your_google_sheet_id>
+GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/your/service_account_key.json
+
+# Polling Configuration (optional, defaults to 60 seconds)
+# POLLING_INTERVAL_SECONDS=60
+
+# Google Sheets Range (optional, defaults to 'Sheet1!A:Z')
+# Example: 'My Form Responses!A:F'
+# SHEETS_RANGE_NAME='Sheet1!A:Z'
+
+# Column index for the free-text answer in Google Sheets (0-based).
+# For example, if the free-text answer is in Column C, use 2.
+# Default is 2 if not specified by FREE_TEXT_COLUMN_INDEX in poller.py.
+# FREE_TEXT_COLUMN_INDEX=2
+```
+
+**Explanation of Environment Variables:**
+
+-   `SHEETS_SPREADSHEET_ID`: The ID of your Google Sheet.
+    -   **How to obtain the Google Sheet ID:**
+        1.  Open your Google Form.
+        2.  Click on the "Responses" tab.
+        3.  Click the "Link to Sheets" button (or the green Sheets icon).
+        4.  If you're creating a new spreadsheet, it will open. If you've linked one previously, it will open the existing sheet.
+        5.  The URL of the Google Sheet will look like this: `https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit#gid=SHEET_GID`.
+        6.  Copy the `SPREADSHEET_ID` part from the URL.
+-   `GOOGLE_SERVICE_ACCOUNT_JSON`: The absolute path to your Google Cloud Service Account JSON key file.
+    -   **How to create and get the Service Account JSON:**
+        1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
+        2.  Select your GCP project.
+        3.  Navigate to "IAM & Admin" > "Service Accounts".
+        4.  Click "+ CREATE SERVICE ACCOUNT".
+        5.  Fill in the service account details (name, ID, description).
+        6.  Click "CREATE AND CONTINUE".
+        7.  **Grant access:** For reading Google Sheets, grant the "Viewer" role (or a more restrictive custom role if preferred, though "Viewer" is simplest for read-only access to Sheets data). *Initially, you might need to grant "Editor" role on the specific Google Sheet itself to the service account's email address.*
+        8.  Click "CONTINUE".
+        9.  Skip granting users access to this service account (unless needed for other purposes).
+        10. Click "DONE".
+        11. Find the service account you created in the list. Click the three dots (Actions) next to it and select "Manage keys".
+        12. Click "ADD KEY" > "Create new key".
+        13. Choose "JSON" as the key type and click "CREATE".
+        14. The JSON key file will be downloaded to your computer.
+    -   **Placement of the JSON key:**
+        -   Store this JSON file in a secure location on your machine or server where the poller will run.
+        -   **Do not commit this file to your Git repository.** The `.gitignore` file should already include `.env`, and you should ensure your JSON key is also not committed.
+        -   Update the `GOOGLE_SERVICE_ACCOUNT_JSON` path in your `.env` file to point to the location where you saved this key.
+    -   **Share the Google Sheet with the Service Account:**
+        1.  Open the Google Sheet you want to access.
+        2.  Click the "Share" button (top right).
+        3.  In the "Add people and groups" field, paste the email address of the service account you created (e.g., `your-service-account-name@your-gcp-project-id.iam.gserviceaccount.com`).
+        4.  Grant it at least "Viewer" permissions. If "Viewer" doesn't work, try "Commenter" or "Editor" for the sheet. "Viewer" on the Sheet and "Viewer" in IAM should be sufficient for reading.
+        5.  Click "Send" or "Share".
+-   `POLLING_INTERVAL_SECONDS` (Optional): How often the poller checks for new rows, in seconds. Defaults to 60.
+-   `SHEETS_RANGE_NAME` (Optional): The specific sheet and range to query (e.g., `'Sheet1!A:Z'` or `'Form Responses 1!A:G'`). Defaults to `'Sheet1!A:Z'`. Make sure this matches your Google Sheet's structure.
+-   `FREE_TEXT_COLUMN_INDEX` (Optional): The 0-based index of the column in your Google Sheet that contains the free-text answer you want to classify. Defaults to `2` (Column C) in `poller.py` if not set. For example, if your free-text is in Column D, set this to `3`.
+
+**Important:** Ensure the `.env` file is included in your `.gitignore` to prevent committing sensitive information.
+
+### 5. Running the Poller
+
+Once the dependencies are installed and the `.env` file is configured with your Sheet ID and Service Account JSON path:
+
+```bash
+python backend/poller.py
+```
+
+The poller will start, and you should see log messages in your console indicating when it polls the sheet and if new rows are found.
 
 ## Modifying Hard Classification Rules
 
-The rule-based ("hard") classifier maps specific keywords or phrases found in the user's free-text answers to predefined Tech Paths. These rules are defined in the `HARD_RULES` dictionary within the `/backend/ai_model/hard_classifier.py` file.
+The rule-based ("hard") classifier maps specific keywords or phrases found in the form's free-text answers to predefined Tech Paths. These rules are defined in the `HARD_RULES` dictionary within the `/backend/ai_model/hard_classifier.py` file.
 
 ### How to Add or Modify Keywords
 
@@ -218,8 +150,8 @@ The rule-based ("hard") classifier maps specific keywords or phrases found in th
 5.  **Save and Test:**
     *   After making changes, save the `hard_classifier.py` file.
     *   It's highly recommended to add or update unit tests in `/backend/tests/test_hard_classifier.py` to verify your new rules work as expected and haven't introduced regressions.
-    *   Run the tests: `cd backend && python -m unittest discover tests` (or run specific test files).
-    *   You can also run the application and submit survey entries to see the classification in action.
+    *   Run the tests: `python -m unittest backend.tests.test_hard_classifier` (or discover tests from the root directory).
+    *   You can also run the poller and add test entries to your Google Form/Sheet to see the classification in action via the logs.
 
 **Example: Adding a rule for "quantum computing"**
 
@@ -237,49 +169,144 @@ Remember to choose Tech Paths that are consistent with your project's defined ca
 
 ### AI Soft Classification
 
-If a free-text answer from the survey does not match any of the predefined keywords in the "hard" classifier, the system attempts a "soft" classification using a local AI model.
+If a free-text answer from the Google Form does not match any of the predefined keywords in the "hard" classifier, the system attempts a "soft" classification using a local AI model.
 
--   **Technology:** This feature utilizes the Hugging Face `transformers` library and a pre-trained model (`facebook/distilbart-mnli`) for zero-shot text classification.
--   **Local Model:** The model runs entirely locally. **No external API tokens (e.g., for Hugging Face API) are required for this specific model.**
+-   **Technology:** This feature utilizes the Hugging Face `transformers` library and a pre-trained model (`MoritzLaurer/deberta-v3-base-zeroshot-v2.0`) for zero-shot text classification.
+-   **Local Model:** The model runs entirely locally. **No external API tokens (e.g., Hugging Face API Token) are required.**
 -   **Automatic Download & Caching:**
-    -   When the application runs for the first time and the soft classifier is needed, the `transformers` library will automatically download the `facebook/distilbart-mnli` model (a few hundred MBs). This might take a few minutes depending on your internet connection.
+    -   When the application runs for the first time and the soft classifier is needed, the `transformers` library will automatically download the `MoritzLaurer/deberta-v3-base-zeroshot-v2.0` model (this model might vary in size). This might take a few minutes depending on your internet connection.
     -   The downloaded model is then cached locally on your machine, typically in `~/.cache/huggingface/hub/` (the exact path might vary slightly based on your operating system and Hugging Face library version). Subsequent runs will use the cached model, making startup much faster.
--   **Functionality:** The soft classifier attempts to assign one of the predefined Tech Paths to the free-text answer based on semantic similarity.
+-   **Functionality:** The soft classifier attempts to assign one of the ten predefined Tech Paths to the free-text answer based on semantic similarity.
 
 ## Troubleshooting
 
--   **Connection issues between frontend and backend:**
-    -   Ensure the backend Flask server is running.
-    -   Verify the `API_BASE_URL` in `frontend/src/api.js` correctly points to the backend server (default is `http://localhost:5000/api` for development).
-    -   Check for CORS errors in the browser console. If you are running frontend on a different port than backend (e.g. Vite default 5173 and Flask 5000), ensure backend CORS is configured to allow frontend's origin. (This is handled in `backend/poller.py`).
--   **Classification not working as expected:**
-    -   For hard classification, check the rules in `/backend/ai_model/hard_classifier.py`.
-    -   For soft classification, ensure the `transformers` and `torch` libraries are correctly installed. The first run might be slow due to model download.
--   **Python module import errors (e.g., `ModuleNotFoundError`):**
-    -   Ensure you have activated your Python virtual environment if you are using one.
-    -   Make sure you are in the correct directory (`backend`) when running `python poller.py`.
-    -   Verify all dependencies in `backend/requirements.txt` are installed.
+-   **`FileNotFoundError: [Errno 2] No such file or directory: '/path/to/your/service_account_key.json'`**:
+    -   Verify that the path specified in `GOOGLE_SERVICE_ACCOUNT_JSON` in your `.env` file is correct and that the JSON key file exists at that location.
+    -   Ensure the path is absolute or correctly relative to where the script is run (absolute paths are recommended for clarity).
+-   **`google.auth.exceptions.RefreshError: ...invalid_grant...` or Permission Errors**:
+    -   Ensure the Google Sheets API is enabled in your GCP project.
+    -   Double-check that you have shared the Google Sheet with your service account's email address and given it at least "Viewer" permissions on the Sheet itself.
+    -   Verify the service account has the necessary IAM roles in GCP (e.g., "Service Account User", and ensure the APIs it needs are enabled). For Sheets API, typically no specific GCP role beyond basic access is needed if the Sheet is shared correctly.
+-   **No new rows detected**:
+    -   Check if new rows are actually being added to the Google Sheet.
+    -   Verify the `RANGE_NAME` in `poller.py` (or `SHEETS_RANGE_NAME` in `.env`) correctly covers the columns and sheet name where data is being added.
+    -   Look at the poller logs for any error messages.
+-   **ImportError: No module named 'utils.sheets_client'**:
+    -   If you are running `python poller.py` from the `backend` directory, the import should be `from sheets_client import fetch_responses`.
+    -   If you are running from the root directory (`python backend/poller.py`), the import `from utils.sheets_client import fetch_responses` should work if `backend` is a package (contains `__init__.py`). The current `poller.py` has a try-except block to handle this.
 
-## Deployment
+```
 
-### Deploying on Render
 
-Here are specific instructions for deploying the backend service of this application on Render.
+## Full Stack Application Setup
 
-*   **Dependency Note:**
-    Ensure `gunicorn` is listed in your `requirements.txt` file (located at the project root). This file is used by Render to install Python dependencies.
+### Overview
 
-*   **Build Command (run from project root):**
-    Render will typically run this command from the root of your repository.
+This project consists of a Python backend (Flask API and Google Sheets Poller) and a React frontend.
+- The **backend** polls a Google Sheet for new form responses, classifies the text in these responses using hard-rules and a local AI model, and exposes an API endpoint to get the latest classification.
+- The **frontend** provides a user interface to view the latest classified Tech Path.
+
+### Backend Setup
+
+The backend is a Python application that includes a Google Sheets poller and a Flask API server.
+
+1.  **Navigate to the Project Root:**
+    All backend commands should typically be run from the project root directory, where the main `requirements.txt` and `.env` files are located.
+
+2.  **Create a Python Virtual Environment (Recommended):**
+    It is highly recommended to use a Python virtual environment.
+    (Example commands, commented out for tool execution compatibility:
+    ```bash
+    # python -m venv venv
+    # source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+    Please run these commands manually in your local terminal if using a virtual environment.)
+
+3.  **Install Dependencies:**
+    Ensure all dependencies listed in `requirements.txt` are installed (into your virtual environment if using one):
     ```bash
     pip install -r requirements.txt
     ```
+    This includes Flask, Flask-CORS, APScheduler, google-api-python-client, oauth2client, transformers, torch, python-dotenv.
 
-*   **Start Command:**
-    This command tells Render how to start your web service. Render's environment will provide the `$PORT` variable.
-    ```bash
-    cd backend && gunicorn poller:app --bind 0.0.0.0:$PORT
+4.  **Configure Environment Variables:**
+    Create or update the `.env` file in the project root directory with the following (refer to earlier README sections for details on obtaining these values):
+    ```env
+    SHEETS_SPREADSHEET_ID=<your_google_sheet_id>
+    GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/your/service_account_key.json
+    # POLLING_INTERVAL_SECONDS=60 # Optional, defaults to 60
+    # SHEETS_RANGE_NAME='Sheet1!A:Z' # Optional, defaults to 'Sheet1!A:Z'
+    # FREE_TEXT_COLUMN_INDEX=2 # Optional, 0-based index for free-text column, defaults to 2 (Column C)
     ```
-    *   `cd backend`: Navigates into the backend directory where `poller.py` is located.
-    *   `gunicorn poller:app`: Tells Gunicorn to serve the `app` object (your Flask app) found in the `poller.py` file.
-    *   `--bind 0.0.0.0:$PORT`: Binds Gunicorn to all available network interfaces on the port provided by Render.
+    **Important:** Ensure the `GOOGLE_SERVICE_ACCOUNT_JSON` path is correct and the Google Sheet is shared with the service account.
+
+5.  **Running the Backend (Poller + API Server):**
+    The `poller.py` script now runs both the polling job and the Flask API server.
+    ```bash
+    python backend/poller.py
+    ```
+    - The poller will start checking the Google Sheet at regular intervals.
+    - The Flask API server will start, typically on `http://localhost:5000`. You should see log output from both services in your console.
+
+6.  **Testing the Backend API Endpoint:**
+    Once the backend is running and has processed at least one submission, you can test the API endpoint.
+    (The `userEmail` parameter is illustrative and currently ignored by the backend endpoint).
+    ```bash
+    curl "http://localhost:5000/api/submissions/latest"
+    # Example with userEmail: curl "http://localhost:5000/api/submissions/latest?userEmail=test@example.com"
+    ```
+    Expected successful response (example):
+    ```json
+    {
+      "assignedLabel": "Game Development",
+      "found": true,
+      "freeText": "I love building Unity games!",
+      "id": "row_1_167...",
+      "method": "hard",
+      "timestamp": 167...
+    }
+    ```
+    Expected "not found" response (if no submissions yet):
+    ```json
+    {
+      "found": false,
+      "message": "No submissions available yet."
+    }
+    ```
+    You can also check the health endpoint:
+    ```bash
+    curl "http://localhost:5000/api/health"
+    ```
+
+### Frontend Setup
+
+The frontend is a React application built with Vite.
+
+1.  **Navigate to the Frontend Directory:**
+    ```bash
+    cd frontend
+    ```
+
+2.  **Install Dependencies:**
+    If this is the first time or `node_modules` is missing:
+    ```bash
+    npm install
+    ```
+
+3.  **Running the Frontend Development Server:**
+    ```bash
+    npm run dev
+    ```
+    This will start the Vite development server, typically on `http://localhost:5173` (the exact port will be shown in your console). Open this URL in your web browser.
+
+4.  **Frontend Environment Variables:**
+    The frontend is configured in `frontend/src/api.js` to connect to `http://localhost:5000/api` during development. No separate `.env` file is strictly required in the `/frontend` directory for this basic setup, but for production builds, you might configure `VITE_API_BASE_URL` in `/frontend/.env`.
+
+### End-to-End Workflow
+
+1.  Start the backend: `python backend/poller.py` (from project root).
+2.  Start the frontend: `cd frontend && npm run dev` (from project root, or just `npm run dev` if already in `/frontend`).
+3.  Submit a response through your Google Form.
+4.  Wait for the poller to pick up the new submission (check backend logs, typically within `POLLING_INTERVAL_SECONDS`).
+5.  Open the frontend URL (e.g., `http://localhost:5173`) in your browser and navigate to "View My Path Results" (or go directly to `/result`).
+6.  The classified result from your form submission should be displayed.

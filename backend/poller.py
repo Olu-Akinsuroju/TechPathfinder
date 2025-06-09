@@ -29,8 +29,22 @@ load_dotenv()
 
 # --- Flask App Setup ---
 app = Flask(__name__)
-# Configure CORS - Allow requests from Vite's default dev server port and other specified origins
-CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "https://Techpathfinder.onrender.com"])
+# Comment out the old global CORS configuration
+# CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "https://Techpathfinder.onrender.com"])
+
+# Configure resource-specific CORS for /api/* routes
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://tech-path-frontend.onrender.com", # Production frontend URL from user issue
+            "http://localhost:3000",                   # Common React dev port
+            "http://localhost:5173"                    # Vite default dev port
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
 
 # --- In-memory store for submissions ---
 # This list will store all classified submission data.
@@ -42,16 +56,28 @@ submissions_lock = threading.Lock() # To handle concurrent access
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- Flask API Endpoints ---
-@app.route("/api/submissions", methods=["POST"])
+@app.route("/api/submissions", methods=["POST", "OPTIONS"]) # Added "OPTIONS"
 def add_submission():
-    global all_submissions_data
-    data = request.get_json()
+    if request.method == 'OPTIONS':
+        # Preflight request. Flask-CORS should handle Access-Control-Allow-* headers.
+        # For non-simple requests (e.g. with Content-Type: application/json),
+        # the browser sends an OPTIONS request first to check if the actual request is allowed.
+        # Returning a simple 200 OK here is sufficient.
+        response = jsonify({})
+        # Flask-CORS with resource-specific setup should automatically add:
+        # Access-Control-Allow-Origin, Access-Control-Allow-Methods, Access-Control-Allow-Headers
+        return response, 200
 
-    if not data or "freeText" not in data or not isinstance(data["freeText"], str) or not data["freeText"].strip():
-        return jsonify({"error": "Invalid submission data. 'freeText' field is required and must be a non-empty string."}), 400
+    # Existing POST logic
+    if request.method == 'POST':
+        global all_submissions_data
+        data = request.get_json()
 
-    free_text_answer = data["freeText"]
-    submission_id = f"sub_{time.time()}_{len(all_submissions_data)}"
+        if not data or "freeText" not in data or not isinstance(data["freeText"], str) or not data["freeText"].strip():
+            return jsonify({"error": "Invalid submission data. 'freeText' field is required and must be a non-empty string."}), 400
+
+        free_text_answer = data["freeText"]
+        submission_id = f"sub_{time.time()}_{len(all_submissions_data)}"
 
     # Initialize submission_record with all fields from the payload,
     # plus backend-generated id, timestamp, and initial status.
@@ -110,7 +136,10 @@ def add_submission():
         logging.error(f"Failed to find and update submission {submission_id} after classification. This is unexpected.")
         # Decide on how to handle this - maybe return a 500 error. For now, log and proceed.
 
-    return jsonify({"status": "ok", "submissionId": submission_id, "label": classified_label, "method": classified_method}), 201 # 201 Created
+        return jsonify({"status": "ok", "submissionId": submission_id, "label": classified_label, "method": classified_method}), 201 # 201 Created
+
+    # Fallback for any other method not explicitly handled (though route decorator limits this)
+    return jsonify({"error": "Method not allowed"}), 405
 
 @app.route("/api/submissions/latest", methods=["GET"])
 def get_latest_submission_route():

@@ -122,18 +122,13 @@ const SurveyForm = () => {
 
   return (
     <>
-      <div className="container text-center py-4">
-        <h1 className="display-4 mb-3">Discover Your Tech Path</h1>
-        <p className="lead text-muted">
-          Answer a few quick questions to see which tech career fits you best.
-        </p>
-      </div>
-
-      <div className="container py-5">
+      {/* Old header removed */}
+      <div className="container my-5"> {/* Changed py-5 to my-5 */}
         <div className="row justify-content-md-center">
           <div className="col-md-10 col-lg-8 col-xl-7">
-            <div className="card shadow-lg rounded-3">
-              <div className="card-body p-4 p-sm-5">
+            <h2 className="text-center mb-4 fw-bold text-primary">Find Your Tech Path</h2> {/* New Heading */}
+            <div className="card shadow-sm rounded bg-light border-0"> {/* Modified card classes */}
+              <div className="card-body p-4"> {/* Modified card-body padding */}
                 <form noValidate onSubmit={handleSubmit} className={formValidated ? 'was-validated' : ''}>
                   {/* Why Computer Science */}
                   <div className="mb-4">
@@ -275,7 +270,7 @@ const SurveyForm = () => {
                   </div>
 
                   <div className="d-grid mt-5">
-                    <button type="submit" className="btn btn-primary btn-lg" disabled={!isFormComplete() || isLoading}>
+                    <button type="submit" className="btn btn-primary w-100 py-2 fw-semibold shadow-sm" disabled={!isFormComplete() || isLoading}>
                       {isLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>

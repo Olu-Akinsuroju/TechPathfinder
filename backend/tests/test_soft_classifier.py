@@ -15,9 +15,38 @@ except ImportError as e:
     CANDIDATE_LABELS = []
     def soft_classify(text): return None
     actual_classifier = None
+except Exception as e: # Catch any exception during classifier loading to be safe
+    logging.error(f"Critical error during initial import/setup in test_soft_classifier: {e}", exc_info=True)
+    CANDIDATE_LABELS = []
+    def soft_classify(text): return None
+    actual_classifier = None
 
 
 class TestSoftClassifier(unittest.TestCase):
+
+    def test_pipeline_loads_new_model_correctly(self):
+        """
+        Tests if the new Hugging Face model 'MoritzLaurer/deberta-v3-base-zeroshot-v2.0'
+        can be loaded correctly by the pipeline.
+        """
+        if os.environ.get("SKIP_SLOW_TESTS") == "1":
+            self.skipTest("Skipping slow model loading test.")
+
+        pipeline_under_test = None # Initialize to None
+        try:
+            from transformers import pipeline
+            # This is the core of the test: attempting to load the specified model.
+            pipeline_under_test = pipeline(
+                "zero-shot-classification",
+                model="MoritzLaurer/deberta-v3-base-zeroshot-v2.0"
+            )
+            self.assertIsNotNone(pipeline_under_test, "Pipeline failed to load the new model 'MoritzLaurer/deberta-v3-base-zeroshot-v2.0'.")
+            logging.info("Successfully loaded MoritzLaurer/deberta-v3-base-zeroshot-v2.0 model for pipeline loading test.")
+        except ImportError:
+            self.fail("Transformers library not found. Please ensure it is installed.")
+        except Exception as e:
+            # If any other exception occurs (e.g., network issue, model not found on hub), the test should fail.
+            self.fail(f"Failed to load MoritzLaurer/deberta-v3-base-zeroshot-v2.0 model directly: {e}")
 
     @unittest.skipIf(actual_classifier is None, "Hugging Face pipeline failed to load, skipping live model tests.")
     def test_soft_classify_with_actual_model(self):
@@ -33,9 +62,9 @@ class TestSoftClassifier(unittest.TestCase):
         # is one of a few top candidates if necessary, but for this specific phrase,
         # "Data Science/AI" is strongly indicated.
 
-        logging.info(f"Testing soft_classify with text: '{text}' (actual model)")
+        logging.info(f"Testing soft_classify with text: '{text}' (actual model from soft_classifier.py)")
         result = soft_classify(text)
-        logging.info(f"Soft classification result: '{result}'")
+        logging.info(f"Soft classification result from soft_classifier.py: '{result}'")
 
         self.assertIn(result, CANDIDATE_LABELS, f"Result '{result}' not in CANDIDATE_LABELS.")
         self.assertEqual(result, expected_label, f"Expected '{expected_label}', but got '{result}' for text: '{text}'")
@@ -43,12 +72,15 @@ class TestSoftClassifier(unittest.TestCase):
     @unittest.skipIf(actual_classifier is None, "Hugging Face pipeline failed to load, skipping live model tests.")
     def test_soft_classify_another_example(self):
         text = "I love building user interfaces and thinking about user experience for web applications."
-        # Possible expected labels, UX/UI is strongest, Web Development is also plausible
+        # Possible expected labels, UX/UI is strongest, Web Development is also plausible.
+        # The new model might be more decisive or pick a different primary.
+        # For now, we keep the options broad. If this test becomes flaky,
+        # we might need to adjust based on observed behavior of 'MoritzLaurer/deberta-v3-base-zeroshot-v2.0'.
         expected_labels_options = ["UX/UI Design", "Web Development"]
 
-        logging.info(f"Testing soft_classify with text: '{text}' (actual model)")
+        logging.info(f"Testing soft_classify with text: '{text}' (actual model from soft_classifier.py)")
         result = soft_classify(text)
-        logging.info(f"Soft classification result: '{result}'")
+        logging.info(f"Soft classification result from soft_classifier.py: '{result}'")
 
         self.assertIn(result, CANDIDATE_LABELS, f"Result '{result}' not in CANDIDATE_LABELS.")
         self.assertIn(result, expected_labels_options, f"Expected one of {expected_labels_options}, but got '{result}' for text: '{text}'")
@@ -58,9 +90,9 @@ class TestSoftClassifier(unittest.TestCase):
         text = "This sentence is about enjoying a sunny day at the park."
         # For unrelated text, the model will still pick the "best" fit from the labels.
         # The goal here is not to get a specific label, but to ensure it returns *one* of the labels.
-        logging.info(f"Testing soft_classify with unrelated text: '{text}' (actual model)")
+        logging.info(f"Testing soft_classify with unrelated text: '{text}' (actual model from soft_classifier.py)")
         result = soft_classify(text)
-        logging.info(f"Soft classification result for unrelated text: '{result}'")
+        logging.info(f"Soft classification result for unrelated text from soft_classifier.py: '{result}'")
         self.assertIn(result, CANDIDATE_LABELS, f"Result '{result}' for unrelated text not in CANDIDATE_LABELS.")
 
     def test_soft_classify_empty_text(self):
@@ -87,9 +119,9 @@ class TestSoftClassifier(unittest.TestCase):
             'scores': [0.9, 0.05, 0.05] # Mocked scores
         }
 
-        logging.info(f"Testing soft_classify with text: '{text}' (mocked model)")
+        logging.info(f"Testing soft_classify with text: '{text}' (mocked pipeline)")
         result = soft_classify(text)
-        logging.info(f"Soft classification result (mocked): '{result}'")
+        logging.info(f"Soft classification result (mocked pipeline): '{result}'")
 
         # Check that our mock was called
         mock_pipeline_instance.assert_called_once_with(text, CANDIDATE_LABELS)

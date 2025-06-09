@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getSubmissionById } from '../api'; // Adjusted path from ../../api assuming this file is in src/pages
+import { getSubmissionById } from '../api';
+
+// React-Bootstrap imports
+import Container from 'react-bootstrap/Container';
+import Card from 'react-bootstrap/Card';
+import Badge from 'react-bootstrap/Badge';
+import Spinner from 'react-bootstrap/Spinner';
+import Button from 'react-bootstrap/Button';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Alert from 'react-bootstrap/Alert';
 
 const ResultPage = () => {
   const { submissionId } = useParams();
@@ -27,107 +37,143 @@ const ResultPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600"></div>
-        <p className="text-gray-700 text-lg ml-4">Loading results...</p>
-      </div>
+      <Container className="py-5 text-center">
+        <Spinner animation="border" variant="primary" role="status" className="me-2" style={{width: '3rem', height: '3rem'}} />
+        <span className="text-muted fs-5 align-middle">Loading results...</span>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center text-center p-4">
-        <h2 className="text-2xl font-semibold text-red-600 mb-4">Error</h2>
-        <p className="text-red-500 mb-6">{error}</p>
-        <Link to="/" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
-          Back to Survey
-        </Link>
-      </div>
+      <Container className="py-5">
+        <Row className="justify-content-md-center">
+          <Col md={8} lg={6}>
+            <Alert variant="danger" className="text-center">
+              <Alert.Heading as="h2">Error</Alert.Heading>
+              <p>{error}</p>
+              <hr />
+              <div className="d-flex justify-content-center">
+                <Button as={Link} to="/" variant="primary">
+                  Back to Survey
+                </Button>
+              </div>
+            </Alert>
+          </Col>
+        </Row>
+      </Container>
     );
   }
 
   if (!submissionData) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center text-center p-4">
-        <h2 className="text-2xl font-semibold text-gray-700 mb-4">No Submission Data</h2>
-        <p className="text-gray-500 mb-6">Could not retrieve submission details.</p>
-        <Link to="/" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
-          Back to Survey
-        </Link>
-      </div>
+      <Container className="py-5 text-center">
+         <Row className="justify-content-md-center">
+          <Col md={8} lg={6}>
+            <Alert variant="warning" className="text-center">
+              <Alert.Heading as="h2">No Submission Data</Alert.Heading>
+              <p>Could not retrieve submission details for ID: {submissionId}</p>
+              <hr />
+              <div className="d-flex justify-content-center">
+                <Button as={Link} to="/" variant="primary">
+                  Back to Survey
+                </Button>
+              </div>
+            </Alert>
+          </Col>
+        </Row>
+      </Container>
     );
   }
 
-  // Determine badge style based on submissionData.hardOrSoft
-  const isHardMatch = submissionData.hardOrSoft === 'hard';
-  const badgeClasses = `px-3 py-1 inline-block rounded-full text-sm font-semibold ${
-    isHardMatch
-      ? 'bg-pink-100 text-pink-700'
-      : 'bg-indigo-100 text-indigo-700'
-  }`;
+  const matchType = submissionData.hardOrSoft === 'hard' ? 'Hard Match'
+                  : submissionData.hardOrSoft === 'soft' ? 'Soft Match'
+                  : 'Classification Method Unknown';
+  const badgeBg = submissionData.hardOrSoft === 'hard' ? 'danger' : 'info';
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl p-6 sm:p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-3">Your Tech Path Result</h1>
-          <span className={badgeClasses}>
-            {submissionData.hardOrSoft === 'hard' ? 'Hard Match' :
-             submissionData.hardOrSoft === 'soft' ? 'Soft Match' :
-             'Classification Method Unknown'} {/* Added fallback for unknown method */}
-          </span>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold text-indigo-700 mb-2">Recommended Path:</h2>
-            <p className="text-2xl text-gray-800">{submissionData.assignedLabel || 'N/A'}</p>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-medium text-gray-700 mb-1">You said (Why CS):</h3>
-            <p className="text-gray-600 italic">"{submissionData.whyCS || 'Not provided'}"</p>
-          </div>
-
-          {submissionData.dreamProject && (
-            <div>
-              <h3 className="text-lg font-medium text-gray-700 mb-1">Your Dream Project/Job:</h3>
-              <p className="text-gray-600 italic">"{submissionData.dreamProject}"</p>
-            </div>
-          )}
-
-          {/* Optionally, list other key inputs for context */}
-          {submissionData.motivation && (
-              <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-1">Your Motivation:</h3>
-                  <p className="text-gray-600">{submissionData.motivation}</p>
+    <Container className="py-5">
+      <Row className="justify-content-md-center">
+        <Col md={10} lg={8} xl={7}>
+          <Card className="shadow-lg rounded-3 text-start">
+            <Card.Header as="h1" className="text-center h2 fw-bold text-dark py-3">
+              Your Tech Path Result
+            </Card.Header>
+            <Card.Body className="p-4 p-sm-5">
+              <div className="text-center mb-4">
+                <Badge bg={badgeBg} className="px-3 py-2 fs-6 rounded-pill">
+                  {matchType}
+                </Badge>
               </div>
-          )}
-          {submissionData.excitement && (
-              <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-1">Exciting Activity:</h3>
-                  <p className="text-gray-600">{submissionData.excitement}</p>
-              </div>
-          )}
-          {submissionData.tools && submissionData.tools.length > 0 && (
-              <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-1">Preferred Tools:</h3>
-                  <p className="text-gray-600">{submissionData.tools.join(', ')}</p>
-              </div>
-          )}
 
-          <div className="mt-8 text-center">
-            <Link to="/" className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition shadow-md hover:shadow-lg transform hover:scale-105">
-              Take the Survey Again
-            </Link>
-          </div>
-        </div>
-      </div>
-       <footer className="text-center mt-8 text-gray-500 text-sm">
-          Submission ID: {submissionId} <br/>
-          Timestamp: {submissionData.timestamp ? new Date(submissionData.timestamp * 1000).toLocaleString() : 'N/A'}
-      </footer>
-    </div>
+              <div className="mb-4">
+                <h2 className="h5 fw-semibold text-primary mb-2">Recommended Path:</h2>
+                <p className="display-6 text-dark fw-normal">{submissionData.assignedLabel || 'N/A'}</p>
+              </div>
+
+              {submissionData.whyCS && (
+                <div className="mb-3">
+                  <h3 className="h6 text-muted mb-1">You said (Why CS):</h3>
+                  <p className="text-body fst-italic">"{submissionData.whyCS}"</p>
+                </div>
+              )}
+
+              {submissionData.dreamProject && (
+                <div className="mb-3">
+                  <h3 className="h6 text-muted mb-1">Your Dream Project/Job:</h3>
+                  <p className="text-body fst-italic">"{submissionData.dreamProject}"</p>
+                </div>
+              )}
+
+              <hr className="my-4" />
+
+              <h3 className="h6 fw-semibold mb-3">Summary of Your Inputs:</h3>
+              {submissionData.motivation && (
+                  <Row className="mb-2">
+                      <Col sm={4} className="text-muted">Motivation:</Col>
+                      <Col sm={8} className="text-body">{submissionData.motivation}</Col>
+                  </Row>
+              )}
+              {submissionData.excitement && (
+                  <Row className="mb-2">
+                      <Col sm={4} className="text-muted">Exciting Activity:</Col>
+                      <Col sm={8} className="text-body">{submissionData.excitement}</Col>
+                  </Row>
+              )}
+              {submissionData.tools && submissionData.tools.length > 0 && (
+                  <Row className="mb-2">
+                      <Col sm={4} className="text-muted">Preferred Tools:</Col>
+                      <Col sm={8} className="text-body">{submissionData.tools.join(', ')}</Col>
+                  </Row>
+              )}
+               {submissionData.workEnvironment && (
+                  <Row className="mb-2">
+                      <Col sm={4} className="text-muted">Work Environment:</Col>
+                      <Col sm={8} className="text-body">{submissionData.workEnvironment}</Col>
+                  </Row>
+              )}
+              {submissionData.name && (
+                  <Row className="mb-2">
+                      <Col sm={4} className="text-muted">Name:</Col>
+                      <Col sm={8} className="text-body">{submissionData.name}</Col>
+                  </Row>
+              )}
+
+
+              <div className="d-grid mt-5">
+                <Button as={Link} to="/" variant="primary" size="lg">
+                  Take the Survey Again
+                </Button>
+              </div>
+            </Card.Body>
+            <Card.Footer className="text-center text-muted small py-3">
+                Submission ID: {submissionId} <br/>
+                Timestamp: {submissionData.timestamp ? new Date(submissionData.timestamp * 1000).toLocaleString() : 'N/A'}
+            </Card.Footer>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 };
 

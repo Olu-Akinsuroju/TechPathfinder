@@ -93,8 +93,67 @@ The frontend is a React application built with Vite.
     cd frontend
     ```
 
+### Manual `package.json` Adjustments for Bootstrap Migration
+
+Due to a switch from Tailwind CSS to Bootstrap, and potential environment incompatibilities with automated package management in some execution contexts, you will need to manually update your `frontend/package.json` file.
+
+1.  **Ensure your Node.js version is >= 20.0.0** to be compatible with `react-router-dom@7.6.2` (a common dependency). If you cannot upgrade Node.js, you might need to adjust the version of `react-router-dom` or other packages.
+2.  **Modify `frontend/package.json` as follows:**
+
+    *   **Remove from `devDependencies`** (if present):
+        *   `tailwindcss`
+        *   `autoprefixer`
+        *   `postcss`
+        *   `@tailwindcss/postcss` (if it was ever added)
+
+    *   **Add to `dependencies`** (you can use these example versions or the latest stable):
+        ```json
+        "bootstrap": "^5.3.3",
+        "bootstrap-icons": "^1.11.3",
+        "react-bootstrap": "^2.10.2",
+        ```
+        Ensure other existing dependencies like `axios`, `react`, `react-dom`, `react-router-dom` are preserved.
+
+3.  **After saving `package.json`**, navigate to the `frontend` directory in your terminal and run `yarn install` (or `npm install` if you use npm) to apply these changes and update your `node_modules` directory and lock file.
+
+**Example target `package.json` structure (relevant parts):**
+```json
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "bootstrap": "^5.3.3",
+    "bootstrap-icons": "^1.11.3",
+    "react": "^19.1.0",
+    "react-bootstrap": "^2.10.2",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "eslint": "^9.25.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "vite": "^6.3.5"
+  }
+}
+```
+
 2.  **Install Dependencies:**
-    If this is the first time or `node_modules` is missing:
+    After manually updating `package.json`:
     ```bash
     yarn install
     ```

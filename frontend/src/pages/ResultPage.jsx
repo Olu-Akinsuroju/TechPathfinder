@@ -2,15 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getSubmissionById } from '../api';
 
-// React-Bootstrap imports
-import Container from 'react-bootstrap/Container';
-import Card from 'react-bootstrap/Card';
-import Badge from 'react-bootstrap/Badge';
-import Spinner from 'react-bootstrap/Spinner';
-import Button from 'react-bootstrap/Button';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Alert from 'react-bootstrap/Alert';
+// React-Bootstrap imports are removed
 
 const ResultPage = () => {
   const { submissionId } = useParams();
@@ -37,77 +29,68 @@ const ResultPage = () => {
 
   if (isLoading) {
     return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" variant="primary" role="status" className="me-2" style={{width: '3rem', height: '3rem'}} />
-        <span className="text-muted fs-5 align-middle">Loading results...</span>
-      </Container>
+      <div className="container py-5 text-center">
+        <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="text-muted fs-5 mt-2">Loading results...</p>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Container className="py-5">
-        <Row className="justify-content-md-center">
-          <Col md={8} lg={6}>
-            <Alert variant="danger" className="text-center">
-              <Alert.Heading as="h2">Error</Alert.Heading>
+      <div className="container py-5 text-center">
+        <div className="row justify-content-md-center">
+          <div className="col-md-8 col-lg-6">
+            <div className="alert alert-danger" role="alert">
+              <h4 className="alert-heading">Error</h4>
               <p>{error}</p>
-              <hr />
-              <div className="d-flex justify-content-center">
-                <Button as={Link} to="/" variant="primary">
-                  Back to Survey
-                </Button>
-              </div>
-            </Alert>
-          </Col>
-        </Row>
-      </Container>
+            </div>
+            <Link className="btn btn-primary mt-3" to="/">Back to Survey</Link>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (!submissionData) {
     return (
-      <Container className="py-5 text-center">
-         <Row className="justify-content-md-center">
-          <Col md={8} lg={6}>
-            <Alert variant="warning" className="text-center">
-              <Alert.Heading as="h2">No Submission Data</Alert.Heading>
+      <div className="container py-5 text-center">
+        <div className="row justify-content-md-center">
+          <div className="col-md-8 col-lg-6">
+            <div className="alert alert-warning" role="alert">
+              <h4 className="alert-heading">No Submission Data</h4>
               <p>Could not retrieve submission details for ID: {submissionId}</p>
-              <hr />
-              <div className="d-flex justify-content-center">
-                <Button as={Link} to="/" variant="primary">
-                  Back to Survey
-                </Button>
-              </div>
-            </Alert>
-          </Col>
-        </Row>
-      </Container>
+            </div>
+            <Link className="btn btn-primary mt-3" to="/">Back to Survey</Link>
+          </div>
+        </div>
+      </div>
     );
   }
 
-  const matchType = submissionData.hardOrSoft === 'hard' ? 'Hard Match'
-                  : submissionData.hardOrSoft === 'soft' ? 'Soft Match'
-                  : 'Classification Method Unknown';
-  const badgeBg = submissionData.hardOrSoft === 'hard' ? 'danger' : 'info';
+  const matchTypeLabel = submissionData.hardOrSoft === 'hard' ? 'Hard Match'
+                       : submissionData.hardOrSoft === 'soft' ? 'Soft Match'
+                       : 'Classification Method Unknown';
+  const badgeClass = `badge fs-5 px-3 py-2 rounded-pill ${submissionData.hardOrSoft === 'hard' ? 'bg-danger text-white' : 'bg-info text-dark'}`;
+
 
   return (
-    <Container className="py-5">
-      <Row className="justify-content-md-center">
-        <Col md={10} lg={8} xl={7}>
-          <Card className="shadow-lg rounded-3 text-start">
-            <Card.Header as="h1" className="text-center h2 fw-bold text-dark py-3">
-              Your Tech Path Result
-            </Card.Header>
-            <Card.Body className="p-4 p-sm-5">
+    <div className="container py-5">
+      <div className="row justify-content-md-center">
+        <div className="col-md-10 col-lg-8 col-xl-7">
+          <div className="card shadow-lg rounded-3 text-start">
+            <div className="card-header text-center py-3">
+              <h1 className="h2 fw-bold text-dark mb-0">Your Tech Path Result</h1>
+            </div>
+            <div className="card-body p-4 p-sm-5">
               <div className="text-center mb-4">
-                <Badge bg={badgeBg} className="px-3 py-2 fs-6 rounded-pill">
-                  {matchType}
-                </Badge>
+                <span className={badgeClass}>{matchTypeLabel}</span>
               </div>
 
               <div className="mb-4">
-                <h2 className="h5 fw-semibold text-primary mb-2">Recommended Path:</h2>
+                <h2 className="h5 fw-semibold text-primary mb-1">Recommended Path:</h2>
                 <p className="display-6 text-dark fw-normal">{submissionData.assignedLabel || 'N/A'}</p>
               </div>
 
@@ -125,55 +108,59 @@ const ResultPage = () => {
                 </div>
               )}
 
-              <hr className="my-4" />
+              {(submissionData.motivation || submissionData.excitement || (submissionData.tools && submissionData.tools.length > 0) || submissionData.workEnvironment || submissionData.name) && (
+                 <hr className="my-4" />
+              )}
 
-              <h3 className="h6 fw-semibold mb-3">Summary of Your Inputs:</h3>
+              {(submissionData.motivation || submissionData.excitement || (submissionData.tools && submissionData.tools.length > 0) || submissionData.workEnvironment || submissionData.name) && (
+                <h3 className="h6 fw-semibold mb-3">Summary of Your Inputs:</h3>
+              )}
+
               {submissionData.motivation && (
-                  <Row className="mb-2">
-                      <Col sm={4} className="text-muted">Motivation:</Col>
-                      <Col sm={8} className="text-body">{submissionData.motivation}</Col>
-                  </Row>
+                  <div className="row mb-2">
+                      <div className="col-sm-4 text-muted">Motivation:</div>
+                      <div className="col-sm-8 text-body">{submissionData.motivation}</div>
+                  </div>
               )}
               {submissionData.excitement && (
-                  <Row className="mb-2">
-                      <Col sm={4} className="text-muted">Exciting Activity:</Col>
-                      <Col sm={8} className="text-body">{submissionData.excitement}</Col>
-                  </Row>
+                  <div className="row mb-2">
+                      <div className="col-sm-4 text-muted">Exciting Activity:</div>
+                      <div className="col-sm-8 text-body">{submissionData.excitement}</div>
+                  </div>
               )}
               {submissionData.tools && submissionData.tools.length > 0 && (
-                  <Row className="mb-2">
-                      <Col sm={4} className="text-muted">Preferred Tools:</Col>
-                      <Col sm={8} className="text-body">{submissionData.tools.join(', ')}</Col>
-                  </Row>
+                  <div className="row mb-2">
+                      <div className="col-sm-4 text-muted">Preferred Tools:</div>
+                      <div className="col-sm-8 text-body">{submissionData.tools.join(', ')}</div>
+                  </div>
               )}
                {submissionData.workEnvironment && (
-                  <Row className="mb-2">
-                      <Col sm={4} className="text-muted">Work Environment:</Col>
-                      <Col sm={8} className="text-body">{submissionData.workEnvironment}</Col>
-                  </Row>
+                  <div className="row mb-2">
+                      <div className="col-sm-4 text-muted">Work Environment:</div>
+                      <div className="col-sm-8 text-body">{submissionData.workEnvironment}</div>
+                  </div>
               )}
               {submissionData.name && (
-                  <Row className="mb-2">
-                      <Col sm={4} className="text-muted">Name:</Col>
-                      <Col sm={8} className="text-body">{submissionData.name}</Col>
-                  </Row>
+                  <div className="row mb-2">
+                      <div className="col-sm-4 text-muted">Name:</div>
+                      <div className="col-sm-8 text-body">{submissionData.name}</div>
+                  </div>
               )}
 
-
               <div className="d-grid mt-5">
-                <Button as={Link} to="/" variant="primary" size="lg">
+                <Link className="btn btn-primary btn-lg" to="/">
                   Take the Survey Again
-                </Button>
+                </Link>
               </div>
-            </Card.Body>
-            <Card.Footer className="text-center text-muted small py-3">
-                Submission ID: {submissionId} <br/>
-                Timestamp: {submissionData.timestamp ? new Date(submissionData.timestamp * 1000).toLocaleString() : 'N/A'}
-            </Card.Footer>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+            </div>
+            <div className="card-footer text-muted small text-center py-3">
+                <p className="mb-0">Submission ID: {submissionId}</p>
+                <p className="mb-0">Timestamp: {submissionData.timestamp ? new Date(submissionData.timestamp * 1000).toLocaleString() : 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

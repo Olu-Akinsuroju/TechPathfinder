@@ -2,14 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { submitSurveyData } from '../api';
 
-// React-Bootstrap imports
-import Container from 'react-bootstrap/Container';
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Spinner from 'react-bootstrap/Spinner';
+// Removed React-Bootstrap imports
 
 const SurveyForm = () => {
   const [formData, setFormData] = useState({
@@ -28,6 +21,7 @@ const SurveyForm = () => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [formValidated, setFormValidated] = useState(false); // For Bootstrap's .was-validated
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -72,15 +66,14 @@ const SurveyForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormValidated(false); // Reset for next validation display
     const validationErrors = validateForm();
-    setErrors(validationErrors); // Set errors for react-bootstrap to use
+    setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
-      return; // Stop submission if there are errors
+      setFormValidated(true); // Enable Bootstrap's .was-validated styles
+      return;
     }
-
-    // If no errors, clear errors state (optional, as isInvalid checks existence)
-    // setErrors({});
 
     setIsLoading(true);
     const payload = {
@@ -112,190 +105,193 @@ const SurveyForm = () => {
     }
   };
 
-  // Determine if the form has been touched for validation feedback only after first submit attempt
-  const formValidated = Object.keys(errors).length > 0;
+  const motivationOptions = ["High salary", "Creative expression", "Problem-solving", "Data analysis", "Security", "Automation", "Entrepreneurship", "Gaming"];
+  const excitedActivityOptions = [
+    { value: "Designing interfaces", label: "Designing interfaces → UI/UX" },
+    { value: "Building websites", label: "Building websites → Web Dev" },
+    { value: "Analyzing datasets", label: "Analyzing datasets → Data Science/Engineering" },
+    { value: "Securing systems", label: "Securing systems → Cybersecurity" },
+    { value: "Training AI models", label: "Training AI models → AI/ML" },
+    { value: "Developing mobile apps", label: "Developing mobile apps → Mobile Dev" },
+    { value: "Creating games", label: "Creating games → Game Dev" },
+    { value: "Writing algorithms", label: "Writing algorithms → General Programming" },
+    { value: "Managing servers", label: "Managing servers → Cloud Computing" }
+  ];
+  const workEnvironmentOptions = ["Solo deep work", "Team collaboration", "Fast-paced hacking", "Visual creativity"];
 
 
   return (
     <>
-      <Container className="text-center py-4">
+      <div className="container text-center py-4">
         <h1 className="display-4 mb-3">Discover Your Tech Path</h1>
         <p className="lead text-muted">
           Answer a few quick questions to see which tech career fits you best.
         </p>
-      </Container>
+      </div>
 
-      <Container className="py-5">
-        <Row className="justify-content-md-center">
-          <Col md={10} lg={8} xl={7}> {/* Adjusted Col for better width control */}
-            <Card className="shadow-lg rounded-3"> {/* Bootstrap rounded-3 is larger */}
-              <Card.Body className="p-4 p-sm-5">
-                <Form noValidate validated={formValidated} onSubmit={handleSubmit}>
+      <div className="container py-5">
+        <div className="row justify-content-md-center">
+          <div className="col-md-10 col-lg-8 col-xl-7">
+            <div className="card shadow-lg rounded-3">
+              <div className="card-body p-4 p-sm-5">
+                <form noValidate onSubmit={handleSubmit} className={formValidated ? 'was-validated' : ''}>
                   {/* Why Computer Science */}
-                  <Form.Group className="mb-4" controlId="whyComputerScience">
-                    <Form.Label className="fw-semibold">Why Computer Science</Form.Label>
-                    <Form.Control
+                  <div className="mb-4">
+                    <label htmlFor="whyComputerScience" className="form-label fw-semibold">Why Computer Science</label>
+                    <input
                       type="text"
+                      id="whyComputerScience"
                       name="whyComputerScience"
+                      className={`form-control form-control-lg ${errors.whyComputerScience ? 'is-invalid' : ''}`}
                       value={formData.whyComputerScience}
                       onChange={handleChange}
                       required
-                      isInvalid={!!errors.whyComputerScience}
                       placeholder="e.g., I love solving complex problems..."
                     />
-                    <Form.Control.Feedback type="invalid">
-                      {errors.whyComputerScience}
-                    </Form.Control.Feedback>
-                  </Form.Group>
+                    {errors.whyComputerScience && <div className="invalid-feedback">{errors.whyComputerScience}</div>}
+                  </div>
 
                   {/* Motivation */}
-                  <Form.Group className="mb-4" controlId="motivation">
-                    <Form.Label className="fw-semibold">What motivated you to explore tech?</Form.Label>
-                    <div className="mt-2"> {/* Wrapper for options */}
-                      {["High salary", "Creative expression", "Problem-solving", "Data analysis", "Security", "Automation", "Entrepreneurship", "Gaming"].map(option => (
-                        <Form.Check
-                          type="radio"
-                          inline
-                          key={option}
-                          id={`motivation-${option}`}
-                          name="motivation"
-                          value={option}
-                          label={option}
-                          checked={formData.motivation === option}
-                          onChange={handleChange}
-                          isInvalid={!!errors.motivation}
-                          // Feedback for radios is often handled at group level
-                        />
+                  <div className="mb-4">
+                    <label className="form-label fw-semibold">What motivated you to explore tech?</label>
+                    <div className="mt-2">
+                      {motivationOptions.map(option => (
+                        <div className="form-check form-check-inline" key={option}>
+                          <input
+                            className={`form-check-input ${errors.motivation ? 'is-invalid' : ''}`}
+                            type="radio"
+                            name="motivation"
+                            id={`motivation-${option.replace(/\s+/g, '-')}`} // Create valid ID
+                            value={option}
+                            checked={formData.motivation === option}
+                            onChange={handleChange}
+                            required
+                          />
+                          <label className="form-check-label" htmlFor={`motivation-${option.replace(/\s+/g, '-')}`}>{option}</label>
+                        </div>
                       ))}
                     </div>
-                    {errors.motivation && <div className="d-block invalid-feedback">{errors.motivation}</div>}
-                  </Form.Group>
+                    {errors.motivation && <div className="d-block invalid-feedback mb-2">{errors.motivation}</div>}
+                  </div>
 
                   {/* Excited Activity */}
-                  <Form.Group className="mb-4" controlId="excitedActivity">
-                    <Form.Label className="fw-semibold">Which activity excites you most?</Form.Label>
-                     <div className="mt-2">
-                      {[
-                        { value: "Designing interfaces", label: "Designing interfaces → UI/UX" },
-                        { value: "Building websites", label: "Building websites → Web Dev" },
-                        { value: "Analyzing datasets", label: "Analyzing datasets → Data Science/Engineering" },
-                        { value: "Securing systems", label: "Securing systems → Cybersecurity" },
-                        { value: "Training AI models", label: "Training AI models → AI/ML" },
-                        { value: "Developing mobile apps", label: "Developing mobile apps → Mobile Dev" },
-                        { value: "Creating games", label: "Creating games → Game Dev" },
-                        { value: "Writing algorithms", label: "Writing algorithms → General Programming" },
-                        { value: "Managing servers", label: "Managing servers → Cloud Computing" }
-                      ].map(option => (
-                        <Form.Check
-                          type="radio"
-                          key={option.value}
-                          id={`excitedActivity-${option.value}`}
-                          name="excitedActivity"
-                          value={option.value}
-                          label={option.label}
-                          checked={formData.excitedActivity === option.value}
-                          onChange={handleChange}
-                          isInvalid={!!errors.excitedActivity}
-                        />
+                  <div className="mb-4">
+                    <label className="form-label fw-semibold">Which activity excites you most?</label>
+                     <div className="mt-2 row"> {/* Using row for better layout of potentially long labels */}
+                      {excitedActivityOptions.map(option => (
+                        <div className="col-md-6" key={option.value}> {/* Two columns on medium screens */}
+                          <div className="form-check">
+                            <input
+                              className={`form-check-input ${errors.excitedActivity ? 'is-invalid' : ''}`}
+                              type="radio"
+                              name="excitedActivity"
+                              id={`excitedActivity-${option.value.replace(/\s+/g, '-')}`}
+                              value={option.value}
+                              checked={formData.excitedActivity === option.value}
+                              onChange={handleChange}
+                              required
+                            />
+                            <label className="form-check-label" htmlFor={`excitedActivity-${option.value.replace(/\s+/g, '-')}`}>{option.label}</label>
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    {errors.excitedActivity && <div className="d-block invalid-feedback">{errors.excitedActivity}</div>}
+                    {errors.excitedActivity && <div className="d-block invalid-feedback mb-2">{errors.excitedActivity}</div>}
                   </Form.Group>
 
                   {/* Name */}
-                  <Form.Group className="mb-4" controlId="name">
-                    <Form.Label className="fw-semibold">Name <span className="text-muted">(Optional)</span></Form.Label>
-                    <Form.Control
+                  <div className="mb-4">
+                    <label htmlFor="name" className="form-label fw-semibold">Name <span className="text-muted">(Optional)</span></label>
+                    <input
                       type="text"
+                      id="name"
                       name="name"
+                      className={`form-control form-control-lg ${errors.name ? 'is-invalid' : ''}`}
                       value={formData.name}
                       onChange={handleChange}
-                      isInvalid={!!errors.name} // In case validation is added later
                       placeholder="Your Name"
                     />
-                     <Form.Control.Feedback type="invalid">
-                      {errors.name}
-                    </Form.Control.Feedback>
-                  </Form.Group>
+                     {errors.name && <div className="invalid-feedback">{errors.name}</div>}
+                  </div>
 
                   {/* Work Environment */}
-                  <Form.Group className="mb-4" controlId="workEnvironment">
-                    <Form.Label className="fw-semibold">Your ideal work environment involves:</Form.Label>
+                  <div className="mb-4">
+                    <label className="form-label fw-semibold">Your ideal work environment involves:</label>
                     <div className="mt-2">
-                      {["Solo deep work", "Team collaboration", "Fast-paced hacking", "Visual creativity"].map(option => (
-                        <Form.Check
-                          type="radio"
-                          inline
-                          key={option}
-                          id={`workEnvironment-${option}`}
-                          name="workEnvironment"
-                          value={option}
-                          label={option}
-                          checked={formData.workEnvironment === option}
-                          onChange={handleChange}
-                          isInvalid={!!errors.workEnvironment}
-                        />
+                      {workEnvironmentOptions.map(option => (
+                        <div className="form-check form-check-inline" key={option}>
+                          <input
+                            className={`form-check-input ${errors.workEnvironment ? 'is-invalid' : ''}`}
+                            type="radio"
+                            name="workEnvironment"
+                            id={`workEnvironment-${option.replace(/\s+/g, '-')}`}
+                            value={option}
+                            checked={formData.workEnvironment === option}
+                            onChange={handleChange}
+                            required
+                          />
+                          <label className="form-check-label" htmlFor={`workEnvironment-${option.replace(/\s+/g, '-')}`}>{option}</label>
+                        </div>
                       ))}
                     </div>
-                     {errors.workEnvironment && <div className="d-block invalid-feedback">{errors.workEnvironment}</div>}
-                  </Form.Group>
+                    {errors.workEnvironment && <div className="d-block invalid-feedback mb-2">{errors.workEnvironment}</div>}
+                  </div>
 
                   {/* Preferred Tools */}
-                  <Form.Group className="mb-4" controlId="preferredTools">
-                    <Form.Label className="fw-semibold">Preferred tools: <span className="text-muted">(Select at least one)</span></Form.Label>
+                  <div className="mb-4">
+                    <label className="form-label fw-semibold">Preferred tools: <span className="text-muted">(Select at least one)</span></label>
                     <div className="mt-2">
                       {Object.keys(formData.preferredTools).map(toolName => (
-                        <Form.Check
-                          type="checkbox"
-                          inline
-                          key={toolName}
-                          id={`preferredTools-${toolName}`}
-                          name={toolName}
-                          label={toolName}
-                          checked={formData.preferredTools[toolName]}
-                          onChange={handleToolChange}
-                          isInvalid={!!errors.preferredTools}
-                        />
+                        <div className="form-check form-check-inline" key={toolName}>
+                          <input
+                            className={`form-check-input ${errors.preferredTools ? 'is-invalid' : ''}`}
+                            type="checkbox"
+                            name={toolName}
+                            id={`preferredTools-${toolName.replace(/\W/g, '-')}`} // Sanitize ID
+                            checked={formData.preferredTools[toolName]}
+                            onChange={handleToolChange}
+                            // 'required' for a group of checkboxes is handled by validateForm
+                          />
+                          <label className="form-check-label" htmlFor={`preferredTools-${toolName.replace(/\W/g, '-')}`}>{toolName}</label>
+                        </div>
                       ))}
                     </div>
-                    {errors.preferredTools && <div className="d-block invalid-feedback">{errors.preferredTools}</div>}
-                  </Form.Group>
+                     {errors.preferredTools && <div className="d-block invalid-feedback mb-2">{errors.preferredTools}</div>}
+                  </div>
 
                   {/* Dream Project */}
-                  <Form.Group className="mb-4" controlId="dreamProject">
-                    <Form.Label className="fw-semibold">Describe a project you’d love to build in 1–2 sentences/dream Job <span className="text-muted">(Optional)</span></Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
+                  <div className="mb-4">
+                    <label htmlFor="dreamProject" className="form-label fw-semibold">Describe a project you’d love to build in 1–2 sentences/dream Job <span className="text-muted">(Optional)</span></label>
+                    <textarea
+                      id="dreamProject"
                       name="dreamProject"
+                      className={`form-control form-control-lg ${errors.dreamProject ? 'is-invalid' : ''}`}
+                      rows={3}
                       value={formData.dreamProject}
                       onChange={handleChange}
-                      isInvalid={!!errors.dreamProject} // In case validation is added later
                       placeholder="e.g., A mobile app that helps people learn new languages..."
                     />
-                    <Form.Control.Feedback type="invalid">
-                      {errors.dreamProject}
-                    </Form.Control.Feedback>
-                  </Form.Group>
+                    {errors.dreamProject && <div className="invalid-feedback">{errors.dreamProject}</div>}
+                  </div>
 
                   <div className="d-grid mt-5">
-                    <Button variant="primary" size="lg" type="submit" disabled={!isFormComplete() || isLoading}>
+                    <button type="submit" className="btn btn-primary btn-lg" disabled={!isFormComplete() || isLoading}>
                       {isLoading ? (
                         <>
-                          <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                           Submitting...
                         </>
                       ) : (
                         "See My Path"
                       )}
-                    </Button>
+                    </button>
                   </div>
-                </Form>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {isLoading && (
         <div style={{
@@ -308,11 +304,11 @@ const SurveyForm = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999, // High z-index to be on top
+          zIndex: 9999,
         }}>
-          <Spinner animation="border" variant="light" role="status" style={{width: '3rem', height: '3rem'}}>
+          <div className="spinner-border text-light" role="status" style={{width: '3rem', height: '3rem'}}>
             <span className="visually-hidden">Loading...</span>
-          </Spinner>
+          </div>
         </div>
       )}
     </>

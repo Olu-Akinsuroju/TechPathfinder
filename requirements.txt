@@ -5,3 +5,5 @@ oauth2client
 python-dotenv
 torch
 transformers
+Django==5.2.2
+gunicorn

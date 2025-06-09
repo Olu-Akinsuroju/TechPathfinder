@@ -1,0 +1,22 @@
+{% extends "classifier/base.html" %}
+
+{% block title %}Text Classification{% endblock %}
+
+{% block content %}
+<h2>Text Classification</h2>
+<form method="POST">
+    {% csrf_token %}
+    <textarea name="text_input" rows="4" cols="50">{{ text_input }}</textarea><br><br>
+    <input type="submit" value="Classify">
+</form>
+
+{% if classification_result %}
+    <h3>Result:</h3>
+    <p>Input: "{{ text_input }}"</p>
+    <p>Classification: {{ classification_result }}</p>
+{% elif text_input is not None and text_input != "" %}
+    <h3>Result:</h3>
+    <p>Input: "{{ text_input }}"</p>
+    <p>Classification: No match found.</p>
+{% endif %}
+{% endblock %}

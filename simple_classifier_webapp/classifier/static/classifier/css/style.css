@@ -1,0 +1,8 @@
+body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+.container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+h1, h2, h3 { color: #333; } /* Added h2, h3 for consistency */
+textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+input[type="submit"] { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; } /* Changed button to input[type="submit"] */
+input[type="submit"]:hover { background-color: #0056b3; } /* Changed button:hover to input[type="submit"]:hover */
+.result { margin-top: 20px; padding: 15px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; }
+.result p { margin: 5px 0; }

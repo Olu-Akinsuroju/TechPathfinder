@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: techpath-for-csc
+    env: python
+    plan: free # Or your desired plan, 'free' is good for testing
+    region: oregon # Or your preferred region
+    buildCommand: |
+      pip install -r requirements.txt
+      python simple_classifier_webapp/manage.py collectstatic --noinput
+      python simple_classifier_webapp/manage.py migrate
+    startCommand: gunicorn simple_classifier_webapp.wsgi --log-file -
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: simple_classifier_webapp.settings
+      - key: PYTHON_VERSION
+        value: '3.10.13' # Specify a Python version available on Render
+      - key: SECRET_KEY # This is an example of how to load it from Render's secrets
+        fromService: # Users should manage this via Render's dashboard if they want to override the one in settings.py
+          type: secret_file
+          name: django_secret_key # Name of the secret group/file in Render
+          key: secret_key_content # Key within the secret file
+          # If the SECRET_KEY in settings.py is sufficient for this project's security needs,
+          # this envVar can be omitted, and Django will use the one from settings.py.
+          # Or, set it as a simple environment variable in Render's dashboard.

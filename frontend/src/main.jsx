@@ -1,4 +1,3 @@
-import 'bootstrap/dist/css/bootstrap.min.css'; // Must be first
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 // import 'bootstrap-icons/font/bootstrap-icons.css'; // Removed as bootstrap-icons package not explicitly installed in this phase

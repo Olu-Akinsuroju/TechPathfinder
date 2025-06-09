@@ -14,6 +14,7 @@ try:
     # Using a specific model revision can help ensure consistency if needed
     # model_name = "facebook/distilbart-mnli"
     # model_revision = "c2d319c" # Example revision, check Hugging Face for latest stable
+    logging.info(f"Attempting to load Hugging Face pipeline: model='facebook/distilbart-mnli'...")
     classifier = pipeline(
         "zero-shot-classification",
         model="facebook/distilbart-mnli" # Using main branch by default

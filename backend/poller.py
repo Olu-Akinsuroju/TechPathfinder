@@ -10,13 +10,19 @@ from dotenv import load_dotenv
 
 # Try importing classifiers from ai_model package first, then from backend.ai_model
 try:
+    logging.info("Attempting to import classifiers from ai_model package...")
     from ai_model.hard_classifier import hard_classify
     from ai_model.soft_classifier import soft_classify
-except ImportError:
-    # Fallback for cases where poller.py might be run directly and Python path issues occur
-    logging.warning("Could not import classifiers from ai_model, trying backend.ai_model")
+    logging.info("Successfully imported classifiers from ai_model.")
+except ImportError as e:
+    logging.warning(f"Could not import from ai_model ({e}), trying backend.ai_model...")
     from backend.ai_model.hard_classifier import hard_classify
     from backend.ai_model.soft_classifier import soft_classify
+    logging.info("Successfully imported classifiers from backend.ai_model.")
+except Exception as e:
+    logging.error(f"An unexpected error occurred during classifier import: {e}", exc_info=True)
+    # Depending on severity, might re-raise or exit
+    raise
 
 # Load environment variables from .env file
 load_dotenv()
@@ -164,13 +170,18 @@ def health_check():
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    logging.info("Starting Flask API server...")
+    logging.info("Backend application starting up in __main__ block...")
+    # BasicConfig is set globally above. If modules also call it, it might have no effect or conflict.
+    # Ensure basicConfig is called only once, ideally at the very start of the application.
+    # Here, it's assumed the global one at the top of the file (after imports) is sufficient.
+
+    logging.info("Starting Flask API server...") # This existing log is good.
 
     # Check for environment variables for classifiers if they have specific needs
     # (e.g., API keys for soft_classifier if it were calling an external service)
     # For now, assuming classifiers are self-contained or use .env for their own config.
 
-    logging.info("Flask app starting on port 5000...")
+    logging.info("Attempting to start Flask development server (app.run)...")
     # Flask's default port is 5000.
     # debug=False is suitable for a production/staging environment.
     # threaded=True can be useful if background tasks within Flask requests are needed,

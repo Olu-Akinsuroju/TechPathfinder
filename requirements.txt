@@ -1,5 +1,5 @@
+Flask
 Flask-CORS
-oauth2client
 python-dotenv
 torch
 transformers

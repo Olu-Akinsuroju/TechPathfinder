@@ -197,7 +197,7 @@ const SurveyForm = () => {
                       ))}
                     </div>
                     {errors.excitedActivity && <div className="d-block invalid-feedback mb-2">{errors.excitedActivity}</div>}
-                  </Form.Group>
+                  </div>
 
                   {/* Name */}
                   <div className="mb-4">

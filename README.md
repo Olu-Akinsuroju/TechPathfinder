@@ -199,3 +199,27 @@ If a free-text answer from the survey does not match any of the predefined keywo
     -   Ensure you have activated your Python virtual environment if you are using one.
     -   Make sure you are in the correct directory (`backend`) when running `python poller.py`.
     -   Verify all dependencies in `backend/requirements.txt` are installed.
+
+## Deployment
+
+### Deploying on Render
+
+Here are specific instructions for deploying the backend service of this application on Render.
+
+*   **Dependency Note:**
+    Ensure `gunicorn` is listed in your `requirements.txt` file (located at the project root). This file is used by Render to install Python dependencies.
+
+*   **Build Command (run from project root):**
+    Render will typically run this command from the root of your repository.
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+*   **Start Command:**
+    This command tells Render how to start your web service. Render's environment will provide the `$PORT` variable.
+    ```bash
+    cd backend && gunicorn poller:app --bind 0.0.0.0:$PORT
+    ```
+    *   `cd backend`: Navigates into the backend directory where `poller.py` is located.
+    *   `gunicorn poller:app`: Tells Gunicorn to serve the `app` object (your Flask app) found in the `poller.py` file.
+    *   `--bind 0.0.0.0:$PORT`: Binds Gunicorn to all available network interfaces on the port provided by Render.

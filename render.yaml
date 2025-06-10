@@ -6,9 +6,9 @@ services:
     region: oregon # Or your preferred region
     buildCommand: |
       pip install -r requirements.txt
-      python simple_classifier_webapp/manage.py collectstatic --noinput
-      python simple_classifier_webapp/manage.py migrate
-    startCommand: gunicorn simple_classifier_webapp.wsgi --log-file -
+      cd simple_classifier_webapp && python manage.py collectstatic --noinput
+      cd simple_classifier_webapp && python manage.py migrate
+    startCommand: cd simple_classifier_webapp && gunicorn simple_classifier_webapp.wsgi --log-file -
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: simple_classifier_webapp.settings

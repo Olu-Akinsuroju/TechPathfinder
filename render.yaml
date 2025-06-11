@@ -8,7 +8,7 @@ services:
       pip install -r requirements.txt
       cd simple_classifier_webapp && python manage.py collectstatic --noinput
       cd simple_classifier_webapp && python manage.py migrate
-    startCommand: cd simple_classifier_webapp && gunicorn simple_classifier_webapp.wsgi --log-file -
+    startCommand: cd simple_classifier_webapp && gunicorn simple_classifier_webapp.wsgi --bind 0.0.0.0:$PORT --log-file -
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: simple_classifier_webapp.settings

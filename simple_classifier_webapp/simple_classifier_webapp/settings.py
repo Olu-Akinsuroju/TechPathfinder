@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-y*20@15@4*j)m8&rkz8s#53a+b_$&(6r^8fps)-mbfk4pjiirl
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['techpath-for-csc.onrender.com', 'techpathfinder-1.onrender.com']
+ALLOWED_HOSTS = ['techpath-for-csc.onrender.com', '.onrender.com']
 
 
 # Application definition
